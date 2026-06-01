@@ -1,5 +1,7 @@
 # DeepSeek 双向预算分析器
 
+> 🚀 **在线使用**：[mr-koala.github.io/deepseek-price-calculator](https://mr-koala.github.io/deepseek-price-calculator/deepseek_calculator.html) | 📦 [GitHub 仓库](https://github.com/Mr-Koala/deepseek-price-calculator)
+
 纯前端单页面工具，用于估算 DeepSeek V4 API 的成本与 Token 用量。
 
 ## 功能
