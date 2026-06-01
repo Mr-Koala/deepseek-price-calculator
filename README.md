@@ -29,3 +29,36 @@
 
 ### 按token预算计算
 ![演示截图](docs/screenshot_2.jpg)
+
+---
+
+## DeepSeek Bidirectional Budget Analyzer
+
+A pure frontend single-page tool for estimating DeepSeek V4 API costs and token usage.
+
+### Features
+
+- **Bidirectional calculation**: Budget → Tokens (how many tokens you get for a given budget) / Tokens → Cost (how much a given token count costs)
+- **Dual model support**: DeepSeek-V4-Pro and DeepSeek-V4-Flash
+- **Cache hit rate**: Accounts for mixed input pricing based on cache hit/miss ratio
+- **Hybrid mode**: Split budget proportionally between Pro and Flash models
+- **Linked units**: Budget unit (CNY / token count) and display unit (millions / 100-millions) sync automatically
+
+### Pricing
+
+| Model | Cache Hit | Cache Miss | Output |
+|-------|-----------|------------|--------|
+| DeepSeek-V4-Pro | ¥0.025/M | ¥3/M | ¥6/M |
+| DeepSeek-V4-Flash | ¥0.02/M | ¥1/M | ¥2/M |
+
+### Usage
+
+Open `deepseek_calculator.html` directly in your browser — no backend required.
+
+### Screenshots
+
+#### Budget-based calculation
+![Screenshot](docs/screenshot_1.jpg)
+
+#### Token-based calculation
+![Screenshot](docs/screenshot_2.jpg)

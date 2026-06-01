@@ -31,12 +31,70 @@
             --radius-lg: 12px;
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+            --body-bg: var(--slate-100);
+            --card-bg: white;
+            --card-border: var(--slate-200);
+            --stat-bg: var(--slate-50);
+            --stat-border: transparent;
+            --note-bg: var(--slate-50);
+            --note-border: var(--slate-100);
+            --toggle-bg: var(--slate-100);
+            --toggle-active-bg: white;
+            --input-border: var(--slate-200);
+            --grid-color: #f1f5f9;
+            --chart-legend-color: #64748b;
+            --chart-tick-color: #94a3b8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --primary-soft: rgba(99, 102, 241, 0.15);
+                --slate-50: #1a2332;
+                --slate-100: #111827;
+                --slate-200: #1e293b;
+                --slate-300: #334155;
+                --slate-400: #64748b;
+                --body-bg: #0b1120;
+                --card-bg: #151f2e;
+                --card-border: var(--slate-300);
+                --stat-bg: #111827;
+                --stat-border: var(--slate-200);
+                --note-bg: #111827;
+                --note-border: var(--slate-200);
+                --toggle-bg: var(--slate-200);
+                --toggle-active-bg: var(--slate-700);
+                --input-border: var(--slate-300);
+                --grid-color: #1e293b;
+                --chart-legend-color: #94a3b8;
+                --chart-tick-color: #64748b;
+            }
+        }
+        [data-theme="dark"] {
+            --primary-soft: rgba(99, 102, 241, 0.15);
+            --slate-50: #1a2332;
+            --slate-100: #111827;
+            --slate-200: #1e293b;
+            --slate-300: #334155;
+            --slate-400: #64748b;
+            --body-bg: #0b1120;
+            --card-bg: #151f2e;
+            --card-border: var(--slate-300);
+            --stat-bg: #111827;
+            --stat-border: var(--slate-200);
+            --note-bg: #111827;
+            --note-border: var(--slate-200);
+            --toggle-bg: var(--slate-200);
+            --toggle-active-bg: var(--slate-700);
+            --input-border: var(--slate-300);
+            --grid-color: #1e293b;
+            --chart-legend-color: #94a3b8;
+            --chart-tick-color: #64748b;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--slate-100);
+            background: var(--body-bg);
             color: var(--slate-800);
             padding: 20px 16px;
             -webkit-font-smoothing: antialiased;
@@ -71,8 +129,8 @@
 
         /* 卡片 */
         .card {
-            background: white;
-            border: 1px solid var(--slate-200);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: var(--radius-lg);
             padding: 16px;
             margin-bottom: 16px;
@@ -162,7 +220,7 @@
         input[type="number"] {
             width: 80px;
             padding: 3px 8px;
-            border: 1px solid var(--slate-200);
+            border: 1px solid var(--input-border);
             border-radius: var(--radius-sm);
             font-size: 12px;
             font-family: 'Inter', monospace;
@@ -178,10 +236,10 @@
         /* 单位切换 */
         .unit-toggle {
             display: inline-flex;
-            background: var(--slate-100);
+            background: var(--toggle-bg);
             border-radius: var(--radius-sm);
             padding: 2px;
-            border: 1px solid var(--slate-200);
+            border: 1px solid var(--card-border);
         }
         .unit-opt {
             background: transparent;
@@ -197,7 +255,7 @@
         }
         .unit-opt:hover { color: var(--slate-700); }
         .unit-opt.active {
-            background: white;
+            background: var(--toggle-active-bg);
             color: var(--primary);
             box-shadow: var(--shadow-sm);
             font-weight: 600;
@@ -231,8 +289,8 @@
             margin-bottom: 16px;
         }
         .model-card {
-            background: white;
-            border: 1px solid var(--slate-200);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: var(--radius-lg);
             padding: 14px;
             box-shadow: var(--shadow-sm);
@@ -280,14 +338,14 @@
             padding-left: 34px;
         }
         .stat {
-            background: var(--slate-50);
+            background: var(--stat-bg);
             border-radius: var(--radius-sm);
             padding: 6px 10px;
             margin: 4px 0;
-            border: 1px solid transparent;
+            border: 1px solid var(--stat-border);
             transition: border-color 0.2s;
         }
-        .stat:hover { border-color: var(--slate-200); }
+        .stat:hover { border-color: var(--slate-300); }
         .stat-label {
             font-size: 10px;
             font-weight: 600;
@@ -306,17 +364,55 @@
         }
         .stat-number.cost { color: var(--primary); }
         .note {
-            background: var(--slate-50);
+            background: var(--note-bg);
             border-radius: var(--radius-sm);
             padding: 6px 10px;
             font-size: 10px;
             color: var(--slate-500);
             line-height: 1.5;
             margin-top: 8px;
-            border: 1px solid var(--slate-100);
+            border: 1px solid var(--note-border);
         }
 
         .chart-card canvas { max-height: 320px; width: 100%; }
+
+        /* 分享按钮 */
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .share-btn:hover { background: var(--primary-hover); }
+        .share-btn:active { transform: scale(0.96); }
+        .share-btn.copied { background: var(--emerald); }
+
+        /* 主题切换按钮 */
+        .theme-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px; height: 28px;
+            background: var(--toggle-bg);
+            color: var(--slate-600);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, transform 0.1s;
+            flex-shrink: 0;
+        }
+        .theme-btn:hover { background: var(--slate-200); color: var(--slate-800); }
+        .theme-btn:active { transform: scale(0.92); }
 
         footer {
             text-align: center;
@@ -342,7 +438,7 @@
 <body>
 <div class="container">
     <div class="page-header">
-        <h1><span class="icon">D</span> DeepSeek 双向预算分析器</h1>
+        <h1><span class="icon">D</span> DeepSeek 双向预算分析器 <button class="theme-btn" id="themeBtn" title="切换深色/浅色模式">🌙</button> <button class="share-btn" id="shareBtn" title="复制当前配置的分享链接">🔗 分享</button></h1>
         <p>支持预算单位：元 / Token数（单位跟随 Token 显示单位联动）；比例上限 300:1，支持 Pro/Flash 混合计算</p>
     </div>
 
@@ -713,6 +809,7 @@
                 budgetUnit = btn.getAttribute('data-unit');
                 updateSliderRange();
                 updateAll();
+                syncHash();
             });
         });
 
@@ -731,7 +828,98 @@
                     updateSliderRange();
                 }
                 updateAll();
+                syncHash();
             });
+        });
+
+        // URL Hash 分享
+        function syncHash() {
+            const params = new URLSearchParams({
+                b: budgetSlider.value,
+                u: budgetUnit,
+                d: displayUnit,
+                r: ratioSlider.value,
+                h: hitrateSlider.value,
+                m: mixSlider.value
+            });
+            history.replaceState(null, '', '#' + params.toString());
+        }
+
+        function loadFromHash() {
+            const hash = location.hash.slice(1);
+            if (!hash) return;
+            try {
+                const p = new URLSearchParams(hash);
+                if (p.has('u')) {
+                    budgetUnit = p.get('u');
+                    budgetButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-unit') === budgetUnit));
+                }
+                if (p.has('d')) {
+                    displayUnit = p.get('d');
+                    displayButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-disp') === displayUnit));
+                }
+                if (p.has('r')) ratioSlider.value = p.get('r');
+                if (p.has('h')) hitrateSlider.value = p.get('h');
+                if (p.has('m')) mixSlider.value = p.get('m');
+                updateSliderRange();
+                if (p.has('b')) {
+                    budgetSlider.value = p.get('b');
+                    budgetNumber.value = p.get('b');
+                }
+            } catch(e) {}
+        }
+
+        // 分享按钮
+        const shareBtn = document.getElementById('shareBtn');
+        shareBtn.addEventListener('click', () => {
+            const url = location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                shareBtn.classList.add('copied');
+                shareBtn.textContent = '✓ 已复制';
+                setTimeout(() => {
+                    shareBtn.classList.remove('copied');
+                    shareBtn.textContent = '🔗 分享';
+                }, 2000);
+            });
+        });
+
+        // 滑块变化时同步 hash
+        [ratioSlider, hitrateSlider, mixSlider, budgetSlider].forEach(s => {
+            s.addEventListener('input', syncHash);
+        });
+
+        loadFromHash();
+
+        // 主题切换
+        function applyTheme(mode) {
+            const html = document.documentElement;
+            const btn = document.getElementById('themeBtn');
+            if (mode === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+            } else if (mode === 'light') {
+                html.setAttribute('data-theme', 'light');
+            } else {
+                html.removeAttribute('data-theme');
+            }
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            btn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        const themeBtn = document.getElementById('themeBtn');
+        const stored = localStorage.getItem('theme');
+        if (stored === 'dark' || stored === 'light') {
+            applyTheme(stored);
+        }
+
+        themeBtn.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            if (current === 'dark') {
+                applyTheme('light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                applyTheme('dark');
+                localStorage.setItem('theme', 'dark');
+            }
         });
 
         updateSliderRange();
