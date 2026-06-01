@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>DeepSeek 双向预算分析器 · 单位联动修复</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f1f5f9; margin: 0; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
+        .card { background: white; border-radius: 28px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 24px; margin: 16px 0; }
+        .slider-group { flex: 1; min-width: 170px; }
+        label { font-weight: 600; display: block; margin-bottom: 6px; }
+        input[type="range"] { width: 100%; margin: 8px 0; }
+        .value-badge { background: #eef2ff; padding: 4px 12px; border-radius: 24px; font-family: monospace; font-size: 0.85rem; display: inline-block; margin-top: 4px; }
+        .unit-toggle { display: inline-flex; gap: 6px; margin-left: 12px; background: #e2e8f0; border-radius: 40px; padding: 2px; }
+        .unit-opt { background: transparent; border: none; padding: 4px 14px; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
+        .unit-opt.active { background: #3b82f6; color: white; }
+        .model-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 28px; }
+        .model-card { flex: 1; background: white; border-radius: 24px; padding: 18px; border: 1px solid #e2e8f0; }
+        .model-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+        .price-tag { font-size: 0.7rem; color: #475569; margin-bottom: 16px; }
+        .stat { background: #f8fafc; border-radius: 20px; padding: 10px 14px; margin: 12px 0; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #475569; }
+        .stat-number { font-size: 1.5rem; font-weight: 800; font-family: monospace; word-break: break-word; }
+        .note { background: #f1f5f9; border-radius: 16px; padding: 10px; font-size: 0.7rem; text-align: center; margin-top: 12px; }
+        canvas { max-height: 360px; width: 100%; }
+        footer { text-align: center; font-size: 0.7rem; margin-top: 20px; color: #5b6e8c; }
+        .hint-text { font-size:0.7rem; margin-top:6px; color:#475569; background:#f8fafc; padding:4px 8px; border-radius:16px; display:inline-block; }
+        @media (max-width: 800px) { .stat-number { font-size: 1.2rem; } .model-title { font-size: 1.2rem; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h2 style="margin:0 0 6px 0;">💰 DeepSeek 双向预算分析器 · 单位联动</h2>
+        <p>支持预算单位：元 / Token数（单位跟随「Token显示单位」联动）；比例上限300:1，支持Pro/Flash混合</p>
+
+        <div class="flex-row">
+            <div class="slider-group">
+                <label>📥 输入:输出 比例</label>
+                <input type="range" id="ratioSlider" min="0.5" max="300" step="0.5" value="3">
+                <div><span id="ratioValue" class="value-badge">3 : 1</span></div>
+            </div>
+            <div class="slider-group">
+                <label>🎯 缓存命中率 (%)</label>
+                <input type="range" id="hitrateSlider" min="0" max="100" step="1" value="50">
+                <div><span id="hitrateValue" class="value-badge">50%</span></div>
+            </div>
+            <div class="slider-group">
+                <label>🔀 Pro 模型占比 (%)</label>
+                <input type="range" id="mixSlider" min="0" max="100" step="1" value="0">
+                <div><span id="mixValue" class="value-badge">Pro 0% / Flash 100%</span></div>
+            </div>
+        </div>
+
+        <div class="flex-row">
+            <div class="slider-group">
+                <label>💰 预算 <span style="font-weight:normal;">(数值)</span></label>
+                <input type="range" id="budgetSlider" min="1" max="1000" step="1" value="119">
+                <div>
+                    <span id="budgetValue" class="value-badge">119</span>
+                    <input type="number" id="budgetNumber" style="width:100px; margin-left:8px;" value="119" step="1">
+                </div>
+            </div>
+            <div class="slider-group">
+                <label>📏 预算单位</label>
+                <div class="unit-toggle" id="budgetUnitToggle">
+                    <button class="unit-opt active" data-unit="yuan">元</button>
+                    <button class="unit-opt" data-unit="token">Token数</button>
+                </div>
+                <div id="tokenUnitHint" class="hint-text">当前模式：输入预算金额(元)，计算Token用量</div>
+            </div>
+            <div class="slider-group">
+                <label>📊 Token显示单位</label>
+                <div class="unit-toggle" id="displayUnitToggle">
+                    <button class="unit-opt active" data-disp="M">百万 (M)</button>
+                    <button class="unit-opt" data-disp="yi">亿</button>
+                </div>
+                <div id="displayHint" class="hint-text">影响所有Token数值及预算Token数的输入单位</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="model-grid">
+        <!-- Pro 卡片 -->
+        <div class="model-card"><div class="model-title">DeepSeek-V4-Pro</div><div class="price-tag">🔵命中¥0.025/M &nbsp;📘未命中¥3/M &nbsp;🟠输出¥6/M</div>
+            <div class="stat"><div class="stat-label">输入 Tokens</div><div id="proInput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">输出 Tokens</div><div id="proOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">总 Tokens</div><div id="proTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">💰 费用 (元)</div><div id="proCost" class="stat-number">-</div></div>
+            <div id="proNote" class="note"></div>
+        </div>
+        <!-- Flash 卡片 -->
+        <div class="model-card"><div class="model-title">DeepSeek-V4-Flash</div><div class="price-tag">⚡命中¥0.02/M &nbsp;📗未命中¥1/M &nbsp;🟢输出¥2/M</div>
+            <div class="stat"><div class="stat-label">输入 Tokens</div><div id="flashInput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">输出 Tokens</div><div id="flashOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">总 Tokens</div><div id="flashTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">💰 费用 (元)</div><div id="flashCost" class="stat-number">-</div></div>
+            <div id="flashNote" class="note"></div>
+        </div>
+        <!-- 混合卡片 -->
+        <div class="model-card"><div class="model-title">🔀 混合 (Pro+Flash)</div><div class="price-tag">按预算比例拆分</div>
+            <div class="stat"><div class="stat-label">总输入 Tokens</div><div id="mixInput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">总输出 Tokens</div><div id="mixOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">总 Tokens</div><div id="mixTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label">💰 总费用 (元)</div><div id="mixCost" class="stat-number">-</div></div>
+            <div id="mixNote" class="note"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <canvas id="compareChart"></canvas>
+    </div>
+    <footer>🔁 预算单位「Token数」时，输入的数值单位跟随「Token显示单位」联动（M或亿），内部自动转换为百万Token计算。<br>图表纵轴始终为百万Token。混合模型按Pro占比拆分预算(元)或Token数。</footer>
+</div>
+
+<script>
+    (function(){
+        // 价格常量 (元/百万token)
+        const PRICES = {
+            pro: { hit: 0.025, miss: 3.0, out: 6.0 },
+            flash: { hit: 0.02, miss: 1.0, out: 2.0 }
+        };
+
+        // DOM 元素
+        const ratioSlider = document.getElementById('ratioSlider');
+        const hitrateSlider = document.getElementById('hitrateSlider');
+        const mixSlider = document.getElementById('mixSlider');
+        const budgetSlider = document.getElementById('budgetSlider');
+        const budgetNumber = document.getElementById('budgetNumber');
+        const ratioValue = document.getElementById('ratioValue');
+        const hitrateValue = document.getElementById('hitrateValue');
+        const mixValue = document.getElementById('mixValue');
+        const budgetValueSpan = document.getElementById('budgetValue');
+        const tokenUnitHint = document.getElementById('tokenUnitHint');
+
+        // 显示卡片
+        const proInputSpan = document.getElementById('proInput');
+        const proOutputSpan = document.getElementById('proOutput');
+        const proTotalSpan = document.getElementById('proTotal');
+        const proCostSpan = document.getElementById('proCost');
+        const flashInputSpan = document.getElementById('flashInput');
+        const flashOutputSpan = document.getElementById('flashOutput');
+        const flashTotalSpan = document.getElementById('flashTotal');
+        const flashCostSpan = document.getElementById('flashCost');
+        const mixInputSpan = document.getElementById('mixInput');
+        const mixOutputSpan = document.getElementById('mixOutput');
+        const mixTotalSpan = document.getElementById('mixTotal');
+        const mixCostSpan = document.getElementById('mixCost');
+        const proNote = document.getElementById('proNote');
+        const flashNote = document.getElementById('flashNote');
+        const mixNote = document.getElementById('mixNote');
+
+        let chart = null;
+        let budgetUnit = 'yuan';   // 'yuan' 或 'token'
+        let displayUnit = 'M';      // 'M' 或 'yi'
+
+        // 格式化token (百万 -> 显示)
+        function formatToken(millionTokens) {
+            if (millionTokens === undefined || isNaN(millionTokens)) return '0';
+            if (displayUnit === 'M') {
+                return millionTokens.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M';
+            } else {
+                let yi = millionTokens / 100;
+                return yi.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' 亿';
+            }
+        }
+
+        // 给定比例 r (输入/输出), 总token数 totalM (百万), 命中率, 模型价格 -> 返回 { inputM, outputM, cost }
+        function computeFromTotalTokens(r, totalM, hitRate, price) {
+            if (r <= 0 || totalM <= 0) return { inputM: 0, outputM: 0, cost: 0 };
+            const outputM = totalM / (1 + r);
+            const inputM = totalM - outputM;
+            const inputPrice = price.hit * hitRate + price.miss * (1 - hitRate);
+            const cost = inputM * inputPrice + outputM * price.out;
+            return { inputM, outputM, totalM, cost };
+        }
+
+        // 给定预算(元), 比例, 命中率, 模型价格 -> 返回 { inputM, outputM, totalM }
+        function computeFromBudget(budgetYuan, r, hitRate, price) {
+            if (budgetYuan <= 0) return { inputM: 0, outputM: 0, totalM: 0 };
+            const inputPrice = price.hit * hitRate + price.miss * (1 - hitRate);
+            const denominator = r * inputPrice + price.out;
+            if (denominator === 0) return { inputM: 0, outputM: 0, totalM: 0 };
+            const outputM = budgetYuan / denominator;
+            const inputM = r * outputM;
+            return { inputM, outputM, totalM: inputM + outputM };
+        }
+
+        // 混合模型：支持两种模式
+        function computeMixed(proRatio, totalBudgetValue, r, hitRate, isTokenMode) {
+            if (isTokenMode) {
+                // 给定总token数(百万)，按比例拆分总token
+                const proTotalTokens = totalBudgetValue * proRatio;
+                const flashTotalTokens = totalBudgetValue * (1 - proRatio);
+                const proRes = computeFromTotalTokens(r, proTotalTokens, hitRate, PRICES.pro);
+                const flashRes = computeFromTotalTokens(r, flashTotalTokens, hitRate, PRICES.flash);
+                return {
+                    inputM: proRes.inputM + flashRes.inputM,
+                    outputM: proRes.outputM + flashRes.outputM,
+                    totalM: proRes.totalM + flashRes.totalM,
+                    cost: proRes.cost + flashRes.cost,
+                    proBudgetToken: proTotalTokens, flashBudgetToken: flashTotalTokens,
+                    proInput: proRes.inputM, flashInput: flashRes.inputM,
+                    proOutput: proRes.outputM, flashOutput: flashRes.outputM,
+                    proCost: proRes.cost, flashCost: flashRes.cost
+                };
+            } else {
+                // 给定金额，按比例拆分金额
+                const proBudget = totalBudgetValue * proRatio;
+                const flashBudget = totalBudgetValue * (1 - proRatio);
+                const proRes = computeFromBudget(proBudget, r, hitRate, PRICES.pro);
+                const flashRes = computeFromBudget(flashBudget, r, hitRate, PRICES.flash);
+                return {
+                    inputM: proRes.inputM + flashRes.inputM,
+                    outputM: proRes.outputM + flashRes.outputM,
+                    totalM: proRes.totalM + flashRes.totalM,
+                    cost: proBudget + flashBudget,
+                    proBudgetYuan: proBudget, flashBudgetYuan: flashBudget,
+                    proInput: proRes.inputM, flashInput: flashRes.inputM,
+                    proOutput: proRes.outputM, flashOutput: flashRes.outputM,
+                    proCost: proBudget, flashCost: flashBudget
+                };
+            }
+        }
+
+        // 更新滑块范围 (根据budgetUnit和displayUnit)
+        function updateSliderRange() {
+            if (budgetUnit === 'token') {
+                // Token模式: 根据displayUnit设定合理的最大最小值
+                if (displayUnit === 'M') {
+                    budgetSlider.min = "0.1";
+                    budgetSlider.max = "100000";  // 最大10万百万token = 1000亿token
+                    budgetSlider.step = "1";
+                    if (parseFloat(budgetSlider.value) > 100000) budgetSlider.value = "1000";
+                    if (parseFloat(budgetSlider.value) < 0.1) budgetSlider.value = "10";
+                } else {
+                    // 亿为单位
+                    budgetSlider.min = "0.001";
+                    budgetSlider.max = "1000";    // 最大1000亿token
+                    budgetSlider.step = "0.1";
+                    if (parseFloat(budgetSlider.value) > 1000) budgetSlider.value = "10";
+                    if (parseFloat(budgetSlider.value) < 0.001) budgetSlider.value = "0.1";
+                }
+            } else {
+                // 元模式
+                budgetSlider.min = "1";
+                budgetSlider.max = "10000";
+                budgetSlider.step = "1";
+                if (parseFloat(budgetSlider.value) > 10000) budgetSlider.value = "119";
+                if (parseFloat(budgetSlider.value) < 1) budgetSlider.value = "119";
+            }
+            budgetNumber.value = budgetSlider.value;
+        }
+
+        // 获取当前的预算数值(内部统一转为百万Token或元)
+        function getCurrentBudgetValue() {
+            let rawVal = parseFloat(budgetSlider.value);
+            if (isNaN(rawVal)) rawVal = budgetUnit === 'yuan' ? 119 : 10;
+            if (budgetUnit === 'token') {
+                // 将当前显示单位的数值转换为百万Token
+                if (displayUnit === 'M') {
+                    return rawVal;  // 已经是百万Token
+                } else {
+                    return rawVal * 100;  // 亿 -> 百万Token
+                }
+            } else {
+                return rawVal;  // 元
+            }
+        }
+
+        function updateAll() {
+            // 获取参数
+            let ratio = parseFloat(ratioSlider.value);
+            let hitRate = parseFloat(hitrateSlider.value) / 100;
+            let proRatio = parseFloat(mixSlider.value) / 100;
+            if (isNaN(ratio)) ratio = 3;
+            if (isNaN(hitRate)) hitRate = 0.5;
+            if (isNaN(proRatio)) proRatio = 0;
+
+            // 更新显示标签
+            ratioValue.innerText = ratio.toFixed(1) + " : 1";
+            hitrateValue.innerText = (hitRate*100).toFixed(0) + "%";
+            mixValue.innerText = `Pro ${(proRatio*100).toFixed(0)}% / Flash ${(100-proRatio*100).toFixed(0)}%`;
+            
+            // 获取预算数值（内部标准值）
+            let internalBudget = getCurrentBudgetValue();
+            // 显示当前输入框的数值（原始值，带当前显示单位）
+            let displayBudgetValue = parseFloat(budgetSlider.value);
+            if (isNaN(displayBudgetValue)) displayBudgetValue = 0;
+            budgetValueSpan.innerText = displayBudgetValue.toFixed(budgetUnit==='token' && displayUnit==='yi' ? 2 : 0);
+            budgetNumber.value = displayBudgetValue;
+
+            // 更新提示文字
+            if (budgetUnit === 'yuan') {
+                tokenUnitHint.innerHTML = '💰 当前模式：输入预算金额(元)，计算各模型可获得的Token数';
+            } else {
+                tokenUnitHint.innerHTML = `🎯 当前模式：输入总Token数 (单位: ${displayUnit === 'M' ? '百万' : '亿'})，反算所需费用`;
+            }
+
+            let proRes, flashRes, mixedRes;
+
+            if (budgetUnit === 'yuan') {
+                // 模式1: 给定金额
+                proRes = computeFromBudget(internalBudget, ratio, hitRate, PRICES.pro);
+                flashRes = computeFromBudget(internalBudget, ratio, hitRate, PRICES.flash);
+                mixedRes = computeMixed(proRatio, internalBudget, ratio, hitRate, false);
+                proCostSpan.innerText = '¥ ' + internalBudget.toFixed(2);
+                flashCostSpan.innerText = '¥ ' + internalBudget.toFixed(2);
+                mixCostSpan.innerText = '¥ ' + mixedRes.cost.toFixed(2);
+            } else {
+                // 模式2: 给定总Token数 (内部已是百万)
+                let totalTokenM = internalBudget;
+                proRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, PRICES.pro);
+                flashRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, PRICES.flash);
+                mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true);
+                proCostSpan.innerText = '¥ ' + proRes.cost.toFixed(2);
+                flashCostSpan.innerText = '¥ ' + flashRes.cost.toFixed(2);
+                mixCostSpan.innerText = '¥ ' + mixedRes.cost.toFixed(2);
+            }
+
+            // 更新卡片Token显示（始终用formatToken，与displayUnit一致）
+            proInputSpan.innerText = formatToken(proRes.inputM);
+            proOutputSpan.innerText = formatToken(proRes.outputM);
+            proTotalSpan.innerText = formatToken(proRes.totalM);
+            flashInputSpan.innerText = formatToken(flashRes.inputM);
+            flashOutputSpan.innerText = formatToken(flashRes.outputM);
+            flashTotalSpan.innerText = formatToken(flashRes.totalM);
+            mixInputSpan.innerText = formatToken(mixedRes.inputM);
+            mixOutputSpan.innerText = formatToken(mixedRes.outputM);
+            mixTotalSpan.innerText = formatToken(mixedRes.totalM);
+
+            // 备注信息
+            const inputPricePro = (PRICES.pro.hit*hitRate + PRICES.pro.miss*(1-hitRate));
+            const inputPriceFlash = (PRICES.flash.hit*hitRate + PRICES.flash.miss*(1-hitRate));
+            
+            if (budgetUnit === 'yuan') {
+                proNote.innerHTML = `输入混合单价 ¥${inputPricePro.toFixed(4)}/M | 输出 ¥${PRICES.pro.out}/M<br>比例 ${ratio}:1 · 预算 ¥${internalBudget.toFixed(2)}`;
+                flashNote.innerHTML = `输入混合单价 ¥${inputPriceFlash.toFixed(4)}/M | 输出 ¥${PRICES.flash.out}/M<br>比例 ${ratio}:1 · 预算 ¥${internalBudget.toFixed(2)}`;
+                mixNote.innerHTML = `Pro预算 ¥${mixedRes.proBudgetYuan?.toFixed(2)} (${(proRatio*100).toFixed(0)}%) + Flash预算 ¥${mixedRes.flashBudgetYuan?.toFixed(2)}<br>Pro贡献输入 ${formatToken(mixedRes.proInput)} / Flash贡献输入 ${formatToken(mixedRes.flashInput)}`;
+            } else {
+                let totalTokenForDisplay = internalBudget;
+                let displayTotal = (displayUnit === 'M') ? totalTokenForDisplay.toFixed(2) + 'M' : (totalTokenForDisplay/100).toFixed(2) + '亿';
+                proNote.innerHTML = `输入混合单价 ¥${inputPricePro.toFixed(4)}/M | 输出 ¥${PRICES.pro.out}/M<br>比例 ${ratio}:1 · 总Token ${displayTotal}`;
+                flashNote.innerHTML = `输入混合单价 ¥${inputPriceFlash.toFixed(4)}/M | 输出 ¥${PRICES.flash.out}/M<br>比例 ${ratio}:1 · 总Token ${displayTotal}`;
+                let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/100).toFixed(2)+'亿';
+                let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/100).toFixed(2)+'亿';
+                mixNote.innerHTML = `Pro分配Token ${proTokenDisplay} (${(proRatio*100).toFixed(0)}%) + Flash分配 ${flashTokenDisplay}<br>总费用 ¥${mixedRes.cost.toFixed(2)}`;
+            }
+
+            // 更新图表 (纵轴为百万Token)
+            if (chart) chart.destroy();
+            const ctx = document.getElementById('compareChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['DeepSeek-V4-Pro', 'DeepSeek-V4-Flash', '混合模型'],
+                    datasets: [
+                        { label: '总 Tokens (百万)', data: [proRes.totalM, flashRes.totalM, mixedRes.totalM], backgroundColor: '#3b82f6', borderRadius: 6 },
+                        { label: '输入 Tokens (百万)', data: [proRes.inputM, flashRes.inputM, mixedRes.inputM], backgroundColor: '#10b981', borderRadius: 6 },
+                        { label: '输出 Tokens (百万)', data: [proRes.outputM, flashRes.outputM, mixedRes.outputM], backgroundColor: '#f59e0b', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)} M` } } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: '百万 Tokens' } } }
+                }
+            });
+        }
+
+        // 监听滑块和数字输入
+        ratioSlider.addEventListener('input', updateAll);
+        hitrateSlider.addEventListener('input', updateAll);
+        mixSlider.addEventListener('input', updateAll);
+        
+        budgetSlider.addEventListener('input', () => { 
+            budgetNumber.value = budgetSlider.value; 
+            updateAll(); 
+        });
+        
+        budgetNumber.addEventListener('change', () => {
+            let v = parseFloat(budgetNumber.value);
+            if (isNaN(v)) v = budgetUnit === 'yuan' ? 119 : (displayUnit === 'M' ? 10 : 0.1);
+            // 根据当前模式限制范围
+            if (budgetUnit === 'token') {
+                if (displayUnit === 'M') {
+                    v = Math.min(100000, Math.max(0.1, v));
+                } else {
+                    v = Math.min(1000, Math.max(0.001, v));
+                }
+            } else {
+                v = Math.min(10000, Math.max(1, v));
+            }
+            budgetSlider.value = v;
+            updateAll();
+        });
+
+        // 预算单位切换
+        const budgetButtons = document.querySelectorAll('#budgetUnitToggle .unit-opt');
+        budgetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                budgetButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                budgetUnit = btn.getAttribute('data-unit');
+                updateSliderRange();
+                updateAll();
+            });
+        });
+
+        // 显示单位切换 (M/亿)
+        const displayButtons = document.querySelectorAll('#displayUnitToggle .unit-opt');
+        displayButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                displayButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                displayUnit = btn.getAttribute('data-disp');
+                // 重要: 切换显示单位时，重新调整滑块的范围和当前值（保持内部实际Token量不变）
+                if (budgetUnit === 'token') {
+                    let currentInternal = getCurrentBudgetValue(); // 获取当前的百万token数
+                    updateSliderRange();
+                    // 根据新单位设置滑块显示值
+                    if (displayUnit === 'M') {
+                        budgetSlider.value = currentInternal;
+                    } else {
+                        budgetSlider.value = currentInternal / 100;
+                    }
+                    budgetNumber.value = budgetSlider.value;
+                } else {
+                    updateSliderRange();
+                }
+                updateAll();
+            });
+        });
+
+        // 初始化
+        updateSliderRange();
+        updateAll();
+    })();
+</script>
+</body>
+</html>
