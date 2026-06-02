@@ -434,6 +434,9 @@
         .share-btn:hover { background: var(--primary-hover); }
         .share-btn:active { transform: scale(0.96); }
         .share-btn.copied { background: var(--emerald); }
+        @media (max-width: 768px) {
+            .share-btn .btn-text { display: none; }
+        }
 
         /* 主题切换按钮 */
         .theme-btn {
@@ -453,6 +456,15 @@
         .theme-btn:hover { background: var(--slate-200); color: var(--slate-800); }
         .theme-btn:active { transform: scale(0.92); }
 
+        .svg-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+        .model-icon .svg-icon { width: 16px; height: 16px; }
+
         footer {
             text-align: center;
             font-size: 11px;
@@ -467,7 +479,12 @@
         @media (max-width: 768px) {
             body { padding: 12px 8px; }
             .control-grid { grid-template-columns: 1fr; gap: 10px; }
-            .budget-row { flex-direction: column; gap: 10px; }
+            .budget-row { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+            .budget-row .budget-slider-group { flex: 0 0 100%; }
+            .budget-row .budget-unit-group,
+            .budget-row .display-unit-group { flex: 1; }
+            .value-badge { font-size: 11px; white-space: nowrap; }
+            .preset-tag { font-size: 9px; padding: 1px 6px; }
             .stat-number { font-size: 14px; }
             .model-title { font-size: 13px; }
             .card { padding: 12px; }
@@ -476,16 +493,60 @@
 </head>
 <body>
 <div class="container">
+    <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden;">
+        <defs>
+            <symbol id="icon-download" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v9M4 7l4 4 4-4M2 13h12"/>
+            </symbol>
+            <symbol id="icon-target" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <circle cx="8" cy="8" r="6"/>
+                <path d="M8 2v2M8 12v2M2 8h2M12 8h2"/>
+                <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+            </symbol>
+            <symbol id="icon-shuffle" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3l-3-2v2H5a3 3 0 000 6h6a3 3 0 010 6H3M3 13l4 2v-2"/>
+            </symbol>
+            <symbol id="icon-money" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="10" height="9" rx="2"/>
+                <path d="M5.5 5V3a2.5 2.5 0 015 0v2"/>
+                <path d="M5 8h6M8 5v6"/>
+            </symbol>
+            <symbol id="icon-ruler" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <rect x="2" y="5" width="12" height="6" rx="1"/>
+                <path d="M5 5v2M8 5v3M11 5v2" stroke-width="1.2"/>
+            </symbol>
+            <symbol id="icon-chart" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 13h12M4 10v3M7 6v7M10 8v5M13 4v9"/>
+            </symbol>
+            <symbol id="icon-circle" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="7" fill="currentColor"/>
+            </symbol>
+            <symbol id="icon-zap" viewBox="0 0 16 16">
+                <path d="M6.5 1L3 9h4l-1 6 6-8H8l1-6z" fill="currentColor"/>
+            </symbol>
+            <symbol id="icon-link" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 11l-2 2a2 2 0 11-2.83-2.83L5 7.5a2 2 0 012.83 0L9 9"/>
+                <path d="M9 5l2-2a2 2 0 112.83 2.83L11 8.5a2 2 0 01-2.83 0L7 7"/>
+            </symbol>
+            <symbol id="icon-sun" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="3" fill="currentColor"/>
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </symbol>
+            <symbol id="icon-moon" viewBox="0 0 16 16">
+                <path d="M13.5 9.5A6 6 0 015 2 6 6 0 1015 10a6 6 0 01-1.5-.5z" fill="currentColor"/>
+            </symbol>
+        </defs>
+    </svg>
     <div class="page-header">
-        <h1><span class="icon">D</span> DeepSeek 双向预算分析器 <button class="theme-btn" id="themeBtn" title="切换深色/浅色模式">🌙</button> <button class="share-btn" id="shareBtn" title="复制当前配置的分享链接">🔗 分享</button></h1>
-        <p>支持预算单位：元 / Token数（单位跟随 Token 显示单位联动）；比例上限 1000:1，支持 Pro/Flash 混合计算</p>
+        <h1><span class="icon">D</span> DeepSeek 双向预算分析器 <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" class="theme-btn" title="GitHub 仓库" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a> <button class="theme-btn" id="themeBtn" title="切换深色/浅色模式"><svg class="svg-icon" aria-hidden="true"><use href="#icon-moon"/></svg></button> <button class="share-btn" id="shareBtn" title="复制当前配置的分享链接"><svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> 分享</span></button></h1>
+        <p>作者 <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> 考拉先生 · 支持预算单位：元 / Token数（单位跟随 Token 显示单位联动）；比例上限 1000:1，支持 Pro/Flash 混合计算 · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a></p>
     </div>
 
     <div class="card">
         <div class="card-title">参数设置</div>
         <div class="control-grid">
             <div class="control-group">
-                <label>📥 输入:输出 比例</label>
+                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg> 输入:输出 比例</label>
                 <input type="range" id="ratioSlider" min="0" max="1000" step="0.5" value="200">
                 <div class="slider-value">
                     <span id="ratioValue" class="value-badge">3 : 1</span>
@@ -501,7 +562,7 @@
                 </div>
             </div>
             <div class="control-group">
-                <label>🎯 缓存命中率</label>
+                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 缓存命中率</label>
                 <input type="range" id="hitrateSlider" min="0" max="100" step="1" value="90">
                 <div class="slider-value">
                     <span id="hitrateValue" class="value-badge">50%</span>
@@ -514,7 +575,7 @@
                 </div>
             </div>
             <div class="control-group">
-                <label>🔀 Pro 模型占比</label>
+                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg> Pro 模型占比</label>
                 <input type="range" id="mixSlider" min="0" max="100" step="1" value="20">
                 <div class="slider-value">
                     <span id="mixValue" class="value-badge">Pro 0% / Flash 100%</span>
@@ -529,23 +590,29 @@
             <!-- 预算数值 + 预算单位 + Token显示单位 同一行 -->
             <div class="budget-row">
                 <div class="budget-slider-group control-group">
-                    <label>💰 预算数值</label>
+                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 预算数值</label>
                     <input type="range" id="budgetSlider" min="0" max="1000" step="0.1" value="1">
                     <div class="slider-value">
                         <span id="budgetValue" class="value-badge">1</span>
                         <input type="number" id="budgetNumber" value="1" step="0.1">
+                        <span class="preset-tags">
+                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="1" title="预算单位Token，显示单位亿，预算1">1个小目标Token</button>
+                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="10" title="预算单位Token，显示单位亿，预算10">10亿Token大鳄</button>
+                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="10" title="预算单位元，显示单位亿，预算10">兜里只有10块钱</button>
+                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="100" title="预算单位元，显示单位亿，预算100">捡到100元</button>
+                        </span>
                     </div>
                 </div>
                 <div class="budget-unit-group control-group">
-                    <label>📏 预算单位</label>
+                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-ruler"/></svg> 预算单位</label>
                     <div class="unit-toggle" id="budgetUnitToggle">
                         <button class="unit-opt" data-unit="yuan">元</button>
                         <button class="unit-opt active" data-unit="token">Token数</button>
                     </div>
-                    <div id="tokenUnitHint" class="hint-text">🎯 当前：输入总Token数(亿)，反算费用</div>
+                    <div id="tokenUnitHint" class="hint-text"><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 当前：输入总Token数(亿)，反算费用</div>
                 </div>
                 <div class="display-unit-group control-group">
-                    <label>📊 Token 显示单位</label>
+                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-chart"/></svg> Token 显示单位</label>
                     <div class="unit-toggle" id="displayUnitToggle">
                         <button class="unit-opt" data-disp="M">百万(M)</button>
                         <button class="unit-opt active" data-disp="yi">亿</button>
@@ -559,38 +626,38 @@
     <div class="model-grid">
         <div class="model-card">
             <div class="model-header">
-                <span class="model-icon">🔵</span>
+                <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#3b82f6"><use href="#icon-circle"/></svg></span>
                 <span class="model-title">DeepSeek-V4-Pro</span>
             </div>
             <div class="price-tag">命中 ¥0.025/M · 未命中 ¥3/M · 输出 ¥6/M</div>
             <div class="stat"><div class="stat-label">输入 Tokens</div><div id="proInput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">输出 Tokens</div><div id="proOutput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">总 Tokens</div><div id="proTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">💰 费用 (元)</div><div id="proCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 费用 (元)</div><div id="proCost" class="stat-number cost">-</div></div>
             <div id="proNote" class="note"></div>
         </div>
         <div class="model-card">
             <div class="model-header">
-                <span class="model-icon">⚡</span>
+                <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#10b981"><use href="#icon-zap"/></svg></span>
                 <span class="model-title">DeepSeek-V4-Flash</span>
             </div>
             <div class="price-tag">命中 ¥0.02/M · 未命中 ¥1/M · 输出 ¥2/M</div>
             <div class="stat"><div class="stat-label">输入 Tokens</div><div id="flashInput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">输出 Tokens</div><div id="flashOutput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">总 Tokens</div><div id="flashTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">💰 费用 (元)</div><div id="flashCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 费用 (元)</div><div id="flashCost" class="stat-number cost">-</div></div>
             <div id="flashNote" class="note"></div>
         </div>
         <div class="model-card">
             <div class="model-header">
-                <span class="model-icon">🔀</span>
+                <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#a855f7"><use href="#icon-shuffle"/></svg></span>
                 <span class="model-title">混合 (Pro+Flash)</span>
             </div>
             <div class="price-tag">按预算比例拆分</div>
             <div class="stat"><div class="stat-label">总输入 Tokens</div><div id="mixInput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">总输出 Tokens</div><div id="mixOutput" class="stat-number">-</div></div>
             <div class="stat"><div class="stat-label">总 Tokens</div><div id="mixTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">💰 总费用 (元)</div><div id="mixCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 总费用 (元)</div><div id="mixCost" class="stat-number cost">-</div></div>
             <div id="mixNote" class="note"></div>
         </div>
     </div>
@@ -601,8 +668,9 @@
     </div>
 
     <footer>
+        作者 <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> 考拉先生 · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a><br>
         预算单位「Token数」时，输入的数值单位跟随「Token显示单位」联动（M 或 亿），内部自动转换为百万 Token 计算。<br>
-        图表纵轴始终为百万 Token。混合模型按 Pro 占比拆分预算(元)或 Token 数。
+        混合模型按 Pro 占比拆分预算(元)或 Token 数。
     </footer>
 </div>
 
@@ -641,6 +709,41 @@
         const mixNote = document.getElementById('mixNote');
 
         let chart = null;
+        Chart.register({
+            id: 'lineOnTop',
+            afterDatasetsDraw(ch) {
+                const ds = ch.data.datasets[2];
+                const data = ds && ds.data;
+                if (!data || data.length === 0) return;
+                const xS = ch.scales.x;
+                const yS = ch.scales.y1;
+                if (!xS || !yS) return;
+                const ctx = ch.ctx;
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2.5;
+                ctx.lineJoin = 'round';
+                data.forEach((v, i) => {
+                    const px = xS.getPixelForValue(i);
+                    const py = yS.getPixelForValue(v);
+                    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+                data.forEach((v, i) => {
+                    const px = xS.getPixelForValue(i);
+                    const py = yS.getPixelForValue(v);
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+        });
         let budgetUnit = 'token';
         let displayUnit = 'yi';
         let allInputMode = false;
@@ -762,6 +865,12 @@
             document.querySelectorAll('.preset-tag').forEach(tag => {
                 if (tag.dataset.ratio === 'allinput') {
                     tag.classList.toggle('active', allInputMode);
+                } else if (tag.dataset.bu !== undefined) {
+                    const bv = parseFloat(tag.dataset.bv);
+                    const matches = tag.dataset.bu === budgetUnit
+                        && tag.dataset.du === displayUnit
+                        && bv === parseFloat(budgetSlider.value);
+                    tag.classList.toggle('active', matches);
                 } else {
                     const r = parseFloat(tag.dataset.ratio);
                     const h = parseFloat(tag.dataset.hitrate);
@@ -781,9 +890,9 @@
             budgetNumber.value = displayBudgetValue;
 
             if (budgetUnit === 'yuan') {
-                tokenUnitHint.innerHTML = '💰 当前：输入预算金额(元)，计算 Token 用量';
+                tokenUnitHint.innerHTML = '<svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 当前：输入预算金额(元)，计算 Token 用量';
             } else {
-                tokenUnitHint.innerHTML = `🎯 当前：输入总Token数(${displayUnit === 'M' ? '百万' : '亿'})，反算费用`;
+                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 当前：输入总Token数(${displayUnit === 'M' ? '百万' : '亿'})，反算费用`;
             }
 
             let proRes, flashRes, mixedRes;
@@ -872,6 +981,8 @@
                 mixNote.innerHTML = `Pro分配Token ${proTokenDisplay} (${(proRatio*100).toFixed(0)}%) + Flash分配 ${flashTokenDisplay}<br>总费用 ¥${mixedRes.cost.toFixed(2)}`;
             }
 
+            const unitLabel = displayUnit === 'M' ? '百万' : '亿';
+            const tokenDivisor = displayUnit === 'M' ? 1 : 100;
             if (chart) chart.destroy();
             const ctx = document.getElementById('compareChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -879,14 +990,15 @@
                 data: {
                     labels: ['DeepSeek-V4-Pro', 'DeepSeek-V4-Flash', '混合模型'],
                     datasets: [
-                        { label: '总 Tokens (百万)', data: [proRes.totalM, flashRes.totalM, mixedRes.totalM], backgroundColor: '#6366f1', borderRadius: 6 },
-                        { label: '输入 Tokens (百万)', data: [proRes.inputM, flashRes.inputM, mixedRes.inputM], backgroundColor: '#10b981', borderRadius: 6 },
-                        { label: '输出 Tokens (百万)', data: [proRes.outputM, flashRes.outputM, mixedRes.outputM], backgroundColor: '#f59e0b', borderRadius: 6 }
+                        { label: `输入 Tokens (${unitLabel})`, data: [proRes.inputM/tokenDivisor, flashRes.inputM/tokenDivisor, mixedRes.inputM/tokenDivisor], backgroundColor: '#10b981', borderRadius: 6, yAxisID: 'y', stack: 'stack0' },
+                        { label: `输出 Tokens (${unitLabel})`, data: [proRes.outputM/tokenDivisor, flashRes.outputM/tokenDivisor, mixedRes.outputM/tokenDivisor], backgroundColor: '#f59e0b', borderRadius: 6, yAxisID: 'y', stack: 'stack0' },
+                        { label: '费用 (元)', type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
                             position: 'top',
@@ -897,15 +1009,34 @@
                             titleFont: { family: 'Inter', size: 12, weight: '600' },
                             bodyFont: { family: 'Inter', size: 11 },
                             padding: 10, cornerRadius: 6,
-                            callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} M` }
+                            callbacks: { label: (ctx) => {
+                                const datasets = ctx.chart.data.datasets;
+                                if (ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ¥${ctx.raw.toFixed(2)}`;
+                                // 计算总 Tokens（堆积和）
+                                let total = 0;
+                                for (let i = 0; i < datasets.length; i++) {
+                                    if (datasets[i].yAxisID === 'y' && datasets[i].stack === 'stack0') {
+                                        total += datasets[i].data[ctx.dataIndex];
+                                    }
+                                }
+                                return ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} ${unitLabel} (合计: ${total.toFixed(2)} ${unitLabel})`;
+                            }}
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            title: { display: true, text: '百万 Tokens', font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
+                            position: 'left',
+                            title: { display: true, text: unitLabel + ' Tokens', font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
                             grid: { color: '#f1f5f9' },
-                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8' }
+                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => displayUnit === 'M' ? v.toFixed(0) + 'M' : v.toFixed(1) + '亿' }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: { display: true, text: '费用 (元)', font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => '¥' + v.toFixed(1) }
                         },
                         x: {
                             grid: { display: false },
@@ -929,6 +1060,16 @@
                     hitrateSlider.value = tag.dataset.hitrate;
                 } else if (tag.dataset.mix !== undefined) {
                     mixSlider.value = tag.dataset.mix;
+                } else if (tag.dataset.bu !== undefined) {
+                    // 预算快捷标签：同时切换预算单位和显示单位
+                    budgetUnit = tag.dataset.bu;
+                    budgetButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-unit') === budgetUnit));
+                    displayUnit = tag.dataset.du;
+                    displayButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-disp') === displayUnit));
+                    updateSliderRange();
+                    const v = parseFloat(tag.dataset.bv);
+                    budgetSlider.value = v;
+                    budgetNumber.value = v;
                 }
                 updateAll();
                 syncHash();
@@ -967,9 +1108,10 @@
             btn.addEventListener('click', () => {
                 displayButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                const oldUnit = displayUnit;
                 displayUnit = btn.getAttribute('data-disp');
                 if (budgetUnit === 'token') {
-                    let currentInternal = getCurrentBudgetValue();
+                    let currentInternal = parseFloat(budgetSlider.value) * (oldUnit === 'M' ? 1 : 100);
                     updateSliderRange();
                     budgetSlider.value = displayUnit === 'M' ? currentInternal : currentInternal / 100;
                     budgetNumber.value = budgetSlider.value;
@@ -1027,7 +1169,7 @@
                 shareBtn.textContent = '✓ 已复制';
                 setTimeout(() => {
                     shareBtn.classList.remove('copied');
-                    shareBtn.textContent = '🔗 分享';
+                    shareBtn.innerHTML = '<svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> 分享</span>';
                 }, 2000);
             });
         });
@@ -1051,7 +1193,7 @@
                 html.removeAttribute('data-theme');
             }
             const isDark = html.getAttribute('data-theme') === 'dark';
-            btn.textContent = isDark ? '☀️' : '🌙';
+            btn.innerHTML = isDark ? '<svg class="svg-icon" aria-hidden="true"><use href="#icon-sun"/></svg>' : '<svg class="svg-icon" aria-hidden="true"><use href="#icon-moon"/></svg>';
         }
 
         const themeBtn = document.getElementById('themeBtn');
