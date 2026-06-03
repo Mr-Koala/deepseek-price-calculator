@@ -107,3 +107,11 @@ Open `deepseek_calculator.html` directly in your browser — no backend required
 | Budget → Tokens | Tokens → Cost |
 |----------------|---------------|
 | ![Budget to Token](docs/screenshot_en_budget.jpg) | ![Token to Cost](docs/screenshot_en_token.jpg) |
+
+## 友链
+
+[linux.do](https://linux.do) — Linux 与开源技术社区
+
+## 许可证
+
+[MIT](LICENSE)
