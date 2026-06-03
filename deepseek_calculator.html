@@ -493,6 +493,8 @@
         }
         .cache-detail .dot.hit { background: #059669; }
         .cache-detail .dot.miss { background: #6ee7b7; }
+        .cache-detail .dot.pro { background: #3b82f6; }
+        .cache-detail .dot.flash { background: #10b981; }
 
         @media (max-width: 1024px) {
             .model-grid { grid-template-columns: 1fr; }
@@ -723,9 +725,9 @@
             </div>
             <div class="price-tag" id="priceProTag"></div>
             <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="proInput" class="stat-number">-</div><div class="cache-detail" id="proCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="proCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="proCacheMiss">-</span></span></div></div>
-            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="proOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="proOutput" class="stat-number">-</div><div class="cache-detail" id="proOutputCost">-</div></div>
             <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="proTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="proCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="proCost" class="stat-number cost">-</div><div class="cache-detail" id="proCostDetail">-</div></div>
             <div id="proNote" class="note"></div>
         </div>
         <div class="model-card">
@@ -735,9 +737,9 @@
             </div>
             <div class="price-tag" id="priceFlashTag"></div>
             <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="flashInput" class="stat-number">-</div><div class="cache-detail" id="flashCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="flashCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="flashCacheMiss">-</span></span></div></div>
-            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="flashOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="flashOutput" class="stat-number">-</div><div class="cache-detail" id="flashOutputCost">-</div></div>
             <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="flashTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="flashCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="flashCost" class="stat-number cost">-</div><div class="cache-detail" id="flashCostDetail">-</div></div>
             <div id="flashNote" class="note"></div>
         </div>
         <div class="model-card">
@@ -746,10 +748,10 @@
                 <span class="model-title" data-i18n="modelMix"></span>
             </div>
             <div class="price-tag" data-i18n="priceMix"></div>
-            <div class="stat"><div class="stat-label" data-i18n="statTotalInput"></div><div id="mixInput" class="stat-number">-</div><div class="cache-detail" id="mixCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="mixCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="mixCacheMiss">-</span></span></div></div>
-            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="mixOutput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="mixTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statTotalCost"></span></div><div id="mixCost" class="stat-number cost">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotalInput"></div><div id="mixInput" class="stat-number">-</div><div class="cache-detail" id="mixCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="mixCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="mixCacheMiss">-</span></span></div><div class="cache-detail" id="mixInputDetail">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="mixOutput" class="stat-number">-</div><div class="cache-detail" id="mixOutputDetail">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="mixTotal" class="stat-number">-</div><div class="cache-detail" id="mixTotalDetail">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statTotalCost"></span></div><div id="mixCost" class="stat-number cost">-</div><div class="cache-detail" id="mixCostDetail">-</div></div>
             <div id="mixNote" class="note"></div>
         </div>
     </div>
@@ -835,6 +837,8 @@
                 statCost: '费用',
                 statTotalInput: '总输入 Tokens',
                 statTotalCost: '总费用',
+                inputLabel: '输入',
+                outputLabel: '输出',
                 cacheHit: '命中',
                 cacheMiss: '未命中',
                 chartTitle: '模型对比',
@@ -938,6 +942,8 @@
                 statCost: 'Cost',
                 statTotalInput: 'Total Input Tokens',
                 statTotalCost: 'Total Cost',
+                inputLabel: 'Input',
+                outputLabel: 'Output',
                 cacheHit: 'Hit',
                 cacheMiss: 'Miss',
                 chartTitle: 'Model Comparison',
@@ -1040,6 +1046,14 @@
         const flashCacheMiss = document.getElementById('flashCacheMiss');
         const mixCacheHit = document.getElementById('mixCacheHit');
         const mixCacheMiss = document.getElementById('mixCacheMiss');
+        const proOutputCostEl = document.getElementById('proOutputCost');
+        const proCostDetailEl = document.getElementById('proCostDetail');
+        const flashOutputCostEl = document.getElementById('flashOutputCost');
+        const flashCostDetailEl = document.getElementById('flashCostDetail');
+        const mixInputDetailEl = document.getElementById('mixInputDetail');
+        const mixOutputDetailEl = document.getElementById('mixOutputDetail');
+        const mixTotalDetailEl = document.getElementById('mixTotalDetail');
+        const mixCostDetailEl = document.getElementById('mixCostDetail');
         const langBtn = document.getElementById('langBtn');
         const screenshotBtn = document.getElementById('screenshotBtn');
         const headerTitle = document.getElementById('headerTitle');
@@ -1122,8 +1136,8 @@
             } else {
                 const val = millionTokens / divisor;
                 const label = t('unitYi');
-                if (val > 0 && val < 0.01) {
-                    return val.toFixed(4) + ' ' + label;
+                if (val > 0 && val < 1) {
+                    return parseFloat(val.toFixed(4)) + ' ' + label;
                 }
                 return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + label;
             }
@@ -1269,25 +1283,29 @@
                 const inputPricePro = prices().pro.hit * hitRate + prices().pro.miss * (1 - hitRate);
                 const inputPriceFlash = prices().flash.hit * hitRate + prices().flash.miss * (1 - hitRate);
                 if (budgetUnit === 'yuan') {
+                    // 单独卡片：各用完整预算；混合卡片：按比例拆分
+                    const proInputM = internalBudget / inputPricePro;
+                    const flashInputM = internalBudget / inputPriceFlash;
+                    proRes = { inputM: proInputM, outputM: 0, totalM: proInputM, cost: internalBudget };
+                    flashRes = { inputM: flashInputM, outputM: 0, totalM: flashInputM, cost: internalBudget };
                     const proBudget = internalBudget * proRatio;
                     const flashBudget = internalBudget * (1 - proRatio);
-                    const proInputM = proBudget / inputPricePro;
-                    const flashInputM = flashBudget / inputPriceFlash;
-                    proRes = { inputM: proInputM, outputM: 0, totalM: proInputM, cost: proBudget };
-                    flashRes = { inputM: flashInputM, outputM: 0, totalM: flashInputM, cost: flashBudget };
+                    const mixProInputM = proBudget / inputPricePro;
+                    const mixFlashInputM = flashBudget / inputPriceFlash;
                     mixedRes = {
-                        inputM: proInputM + flashInputM, outputM: 0, totalM: proInputM + flashInputM,
+                        inputM: mixProInputM + mixFlashInputM, outputM: 0, totalM: mixProInputM + mixFlashInputM,
                         cost: internalBudget,
                         proBudgetYuan: proBudget, flashBudgetYuan: flashBudget,
-                        proInput: proInputM, flashInput: flashInputM,
+                        proInput: mixProInputM, flashInput: mixFlashInputM,
                         proOutput: 0, flashOutput: 0,
                         proCost: proBudget, flashCost: flashBudget
                     };
                 } else {
+                    // 单独卡片：各用完整 Token；混合卡片：按比例拆分
+                    proRes = { inputM: internalBudget, outputM: 0, totalM: internalBudget, cost: internalBudget * inputPricePro };
+                    flashRes = { inputM: internalBudget, outputM: 0, totalM: internalBudget, cost: internalBudget * inputPriceFlash };
                     const proPortion = internalBudget * proRatio;
                     const flashPortion = internalBudget * (1 - proRatio);
-                    proRes = { inputM: proPortion, outputM: 0, totalM: proPortion, cost: proPortion * inputPricePro };
-                    flashRes = { inputM: flashPortion, outputM: 0, totalM: flashPortion, cost: flashPortion * inputPriceFlash };
                     mixedRes = {
                         inputM: internalBudget, outputM: 0, totalM: internalBudget,
                         cost: proPortion * inputPricePro + flashPortion * inputPriceFlash,
@@ -1297,27 +1315,25 @@
                         proCost: proPortion * inputPricePro, flashCost: flashPortion * inputPriceFlash
                     };
                 }
-                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(2);
-                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(2);
-                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(3);
+                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(3);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             } else if (budgetUnit === 'yuan') {
                 proRes = computeFromBudget(internalBudget, ratio, hitRate, prices().pro);
                 flashRes = computeFromBudget(internalBudget, ratio, hitRate, prices().flash);
                 mixedRes = computeMixed(proRatio, internalBudget, ratio, hitRate, false);
-                proCostSpan.innerText = sym + ' ' + internalBudget.toFixed(2);
-                flashCostSpan.innerText = sym + ' ' + internalBudget.toFixed(2);
-                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + internalBudget.toFixed(3);
+                flashCostSpan.innerText = sym + ' ' + internalBudget.toFixed(3);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             } else {
                 let totalTokenM = internalBudget;
-                // 单体模型卡片：按 mix 比例拆分，避免 Pro=0% 时仍显示全部 Token
-                const proPortion = totalTokenM * proRatio;
-                const flashPortion = totalTokenM * (1 - proRatio);
-                proRes = computeFromTotalTokens(ratio, proPortion, hitRate, prices().pro);
-                flashRes = computeFromTotalTokens(ratio, flashPortion, hitRate, prices().flash);
+                // 单独卡片：各用完整 Token；混合卡片：按比例拆分
+                proRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, prices().pro);
+                flashRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, prices().flash);
                 mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true);
-                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(2);
-                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(2);
-                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(3);
+                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(3);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             }
 
             proInputSpan.innerText = formatToken(proRes.inputM);
@@ -1330,14 +1346,50 @@
             mixOutputSpan.innerText = formatToken(mixedRes.outputM);
             mixTotalSpan.innerText = formatToken(mixedRes.totalM);
 
+            // === Pro/Flash 单独卡片明细 ===
+            const proOutCost = proRes.outputM * prices().pro.out;
+            const proInCost = proRes.inputM * (prices().pro.hit*hitRate + prices().pro.miss*(1-hitRate));
+            proOutputCostEl.textContent = proRes.outputM > 0 ? sym + proOutCost.toFixed(3) : '';
+            proOutputCostEl.style.display = proRes.outputM > 0 ? '' : 'none';
+            proCostDetailEl.textContent = t('inputLabel') + ' ' + sym + proInCost.toFixed(3) + ' + ' + t('outputLabel') + ' ' + sym + proOutCost.toFixed(3);
+
+            const flashOutCost = flashRes.outputM * prices().flash.out;
+            const flashInCost = flashRes.inputM * (prices().flash.hit*hitRate + prices().flash.miss*(1-hitRate));
+            flashOutputCostEl.textContent = flashRes.outputM > 0 ? sym + flashOutCost.toFixed(3) : '';
+            flashOutputCostEl.style.display = flashRes.outputM > 0 ? '' : 'none';
+            flashCostDetailEl.textContent = t('inputLabel') + ' ' + sym + flashInCost.toFixed(3) + ' + ' + t('outputLabel') + ' ' + sym + flashOutCost.toFixed(3);
+
+            // === 混合卡片明细 ===
+            const proLabel = 'Pro', flashLabel = 'Flash';
+            const mp = mixedRes;
+            // 输入明细
+            mixInputDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${formatToken(mp.proInput||0)}</span><span><span class="dot flash"></span>${flashLabel} ${formatToken(mp.flashInput||0)}</span>`;
+            mixInputDetailEl.style.display = (mp.proInput > 0 && mp.flashInput > 0) ? '' : 'none';
+            // 输出明细
+            const proOCost = (mp.proOutput||0) * prices().pro.out;
+            const flashOCost = (mp.flashOutput||0) * prices().flash.out;
+            if ((mp.proOutput||0) > 0 || (mp.flashOutput||0) > 0) {
+                mixOutputDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${formatToken(mp.proOutput||0)} (${sym}${proOCost.toFixed(3)})</span><span><span class="dot flash"></span>${flashLabel} ${formatToken(mp.flashOutput||0)} (${sym}${flashOCost.toFixed(3)})</span>`;
+            } else {
+                mixOutputDetailEl.textContent = '';
+            }
+            mixOutputDetailEl.style.display = ((mp.proOutput||0) > 0 || (mp.flashOutput||0) > 0) ? '' : 'none';
+            // 总量明细
+            mixTotalDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${formatToken((mp.proInput||0)+(mp.proOutput||0))}</span><span><span class="dot flash"></span>${flashLabel} ${formatToken((mp.flashInput||0)+(mp.flashOutput||0))}</span>`;
+            mixTotalDetailEl.style.display = (mp.proInput > 0 && mp.flashInput > 0) ? '' : 'none';
+            // 费用明细
+            const mpCost = mp.proCost || 0, mfCost = mp.flashCost || 0;
+            mixCostDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${sym}${mpCost.toFixed(3)}</span><span><span class="dot flash"></span>${flashLabel} ${sym}${mfCost.toFixed(3)}</span>`;
+            mixCostDetailEl.style.display = (mpCost > 0 && mfCost > 0) ? '' : 'none';
+
             const inputPricePro = (prices().pro.hit*hitRate + prices().pro.miss*(1-hitRate));
             const inputPriceFlash = (prices().flash.hit*hitRate + prices().flash.miss*(1-hitRate));
 
             const ratioLabel = allInputMode ? t('allInput') : (ratio === 0 ? t('allOutput') : t('ratioPrefix') + ' ' + ratio + ':1');
             if (budgetUnit === 'yuan') {
-                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(2);
-                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(2);
-                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(2) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(2) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput);
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3);
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3);
+                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(3) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(3) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput);
             } else {
                 let totalTokenForDisplay = internalBudget;
                 let displayDiv = getDisplayDivisor();
@@ -1347,7 +1399,7 @@
                 flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal;
                 let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
                 let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
-                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(2);
+                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(3);
             }
 
             // === 缓存命中/未命中明细 ===
@@ -1364,12 +1416,12 @@
             const flashMC = flashMissM * prices().flash.miss;
             const mixAvgHitPrice = proRatio * prices().pro.hit + (1-proRatio) * prices().flash.hit;
             const mixAvgMissPrice = proRatio * prices().pro.miss + (1-proRatio) * prices().flash.miss;
-            proCacheHit.innerText = `${formatToken(proHitM)} (${sym}${proHC.toFixed(2)})`;
-            proCacheMiss.innerText = `${formatToken(proMissM)} (${sym}${proMC.toFixed(2)})`;
-            flashCacheHit.innerText = `${formatToken(flashHitM)} (${sym}${flashHC.toFixed(2)})`;
-            flashCacheMiss.innerText = `${formatToken(flashMissM)} (${sym}${flashMC.toFixed(2)})`;
-            mixCacheHit.innerText = `${formatToken(mixHitM)} (${sym}${(mixHitM * mixAvgHitPrice).toFixed(2)})`;
-            mixCacheMiss.innerText = `${formatToken(mixMissM)} (${sym}${(mixMissM * mixAvgMissPrice).toFixed(2)})`;
+            proCacheHit.innerText = `${formatToken(proHitM)} (${sym}${proHC.toFixed(3)})`;
+            proCacheMiss.innerText = `${formatToken(proMissM)} (${sym}${proMC.toFixed(3)})`;
+            flashCacheHit.innerText = `${formatToken(flashHitM)} (${sym}${flashHC.toFixed(3)})`;
+            flashCacheMiss.innerText = `${formatToken(flashMissM)} (${sym}${flashMC.toFixed(3)})`;
+            mixCacheHit.innerText = `${formatToken(mixHitM)} (${sym}${(mixHitM * mixAvgHitPrice).toFixed(3)})`;
+            mixCacheMiss.innerText = `${formatToken(mixMissM)} (${sym}${(mixMissM * mixAvgMissPrice).toFixed(3)})`;
 
             const unitLabel = displayUnit === 'M' ? 'M' : t('unitYi');
             const tokenDivisor = displayUnit === 'M' ? 1 : getDisplayDivisor();
@@ -1402,7 +1454,7 @@
                             padding: 10, cornerRadius: 6,
                             callbacks: { label: (ctx) => {
                                 const datasets = ctx.chart.data.datasets;
-                                if (ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ${sym}${ctx.raw.toFixed(2)}`;
+                                if (ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ${sym}${ctx.raw.toFixed(3)}`;
                                 // 计算总 Tokens（堆积和）
                                 let total = 0;
                                 for (let i = 0; i < datasets.length; i++) {
