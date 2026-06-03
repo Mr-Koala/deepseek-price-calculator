@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>DeepSeek 双向预算分析器</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -316,6 +317,7 @@
         }
         .budget-row .budget-slider-group { flex: 1; min-width: 0; }
         .budget-row .budget-unit-group,
+        .budget-row .currency-unit-group,
         .budget-row .display-unit-group {
             flex-shrink: 0;
         }
@@ -473,6 +475,25 @@
             line-height: 1.6;
         }
 
+        /* 缓存明细 */
+        .cache-detail {
+            font-size: 10px;
+            color: var(--slate-500);
+            margin-top: 3px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .cache-detail .dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            margin-right: 2px;
+            vertical-align: middle;
+        }
+        .cache-detail .dot.hit { background: #059669; }
+        .cache-detail .dot.miss { background: #6ee7b7; }
+
         @media (max-width: 1024px) {
             .model-grid { grid-template-columns: 1fr; }
         }
@@ -488,6 +509,67 @@
             .stat-number { font-size: 14px; }
             .model-title { font-size: 13px; }
             .card { padding: 12px; }
+        }
+
+        /* 自定义 Tooltip */
+        [tooltip-hover] {
+            position: relative;
+            cursor: help;
+            display: inline-block;
+        }
+        [tooltip-hover]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            margin-bottom: 7px;
+            transform: translateY(4px);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.45;
+            font-family: 'Inter', sans-serif;
+            white-space: normal;
+            text-align: left;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease 0.15s, transform 0.15s ease 0.15s;
+            z-index: 1000;
+            min-width: 60px;
+            max-width: 260px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+        }
+        [tooltip-hover]::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            right: 14px;
+            width: 0;
+            height: 0;
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+            margin-bottom: -3px;
+            opacity: 0;
+            transition: opacity 0.15s ease 0.15s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        [tooltip-hover]:hover::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        [tooltip-hover]:hover::before {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            [tooltip-hover]::after {
+                font-size: 11px;
+                padding: 4px 8px;
+                max-width: 200px;
+            }
         }
     </style>
 </head>
@@ -538,148 +620,393 @@
         </defs>
     </svg>
     <div class="page-header">
-        <h1><span class="icon">D</span> DeepSeek 双向预算分析器 <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" class="theme-btn" title="GitHub 仓库" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a> <button class="theme-btn" id="themeBtn" title="切换深色/浅色模式"><svg class="svg-icon" aria-hidden="true"><use href="#icon-moon"/></svg></button> <button class="share-btn" id="shareBtn" title="复制当前配置的分享链接"><svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> 分享</span></button></h1>
-        <p>作者 <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> 考拉先生 · 支持预算单位：元 / Token数（单位跟随 Token 显示单位联动）；比例上限 1000:1，支持 Pro/Flash 混合计算 · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a></p>
+        <h1><span class="icon">D</span> <span id="headerTitle" data-i18n="title"></span> <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" class="theme-btn" title="GitHub 仓库" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a> <button class="theme-btn" id="themeBtn" title="切换深色/浅色模式"><svg class="svg-icon" aria-hidden="true"><use href="#icon-moon"/></svg></button> <button class="theme-btn" id="langBtn" title="Switch to English" style="font-size:11px;font-weight:700;width:32px;">EN</button> <button class="share-btn" id="shareBtn" title="复制当前配置的分享链接"><svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> 分享</span></button> <button class="share-btn" id="screenshotBtn" title="保存为图片"><svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg><span class="btn-text"> 截图</span></button></h1>
+        <p data-i18n="headerDesc"></p>
     </div>
 
     <div class="card">
-        <div class="card-title">参数设置</div>
+        <div class="card-title" data-i18n="paramSetting"></div>
         <div class="control-grid">
             <div class="control-group">
-                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg> 输入:输出 比例</label>
+                <label data-i18n-title="ratioTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg> <span data-i18n="ratioLabel"></span></label>
                 <input type="range" id="ratioSlider" min="0" max="1000" step="0.5" value="200">
                 <div class="slider-value">
                     <span id="ratioValue" class="value-badge">3 : 1</span>
                     <span class="preset-tags">
-                        <button class="preset-tag" data-ratio="allinput" title="全部为输入">全输入</button>
-                        <button class="preset-tag" data-ratio="200">编程Agent</button>
-                        <button class="preset-tag" data-ratio="50">代码补全</button>
-                        <button class="preset-tag" data-ratio="10">文档</button>
-                        <button class="preset-tag" data-ratio="5">问答</button>
-                        <button class="preset-tag" data-ratio="1">翻译</button>
-                        <button class="preset-tag" data-ratio="0" title="纯输出（如生成文章）">全输出</button>
+                        <button class="preset-tag" data-ratio="allinput" data-i18n="presetAllInput"></button>
+                        <button class="preset-tag" data-ratio="200" data-i18n="presetCodingAgent"></button>
+                        <button class="preset-tag" data-ratio="50" data-i18n="presetCodeComplete"></button>
+                        <button class="preset-tag" data-ratio="10" data-i18n="presetDoc"></button>
+                        <button class="preset-tag" data-ratio="5" data-i18n="presetQA"></button>
+                        <button class="preset-tag" data-ratio="1" data-i18n="presetTranslate"></button>
+                        <button class="preset-tag" data-ratio="0" data-i18n="presetAllOutput"></button>
                     </span>
                 </div>
             </div>
             <div class="control-group">
-                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 缓存命中率</label>
+                <label data-i18n-title="hitrateTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> <span data-i18n="hitrateLabel"></span></label>
                 <input type="range" id="hitrateSlider" min="0" max="100" step="1" value="90">
                 <div class="slider-value">
                     <span id="hitrateValue" class="value-badge">50%</span>
                     <span class="preset-tags">
-                        <button class="preset-tag" data-hitrate="50" title="低缓存命中率">低 50%</button>
-                        <button class="preset-tag" data-hitrate="80" title="中等缓存命中率">中 80%</button>
-                        <button class="preset-tag" data-hitrate="90" title="高缓存命中率">高 90%</button>
-                        <button class="preset-tag" data-hitrate="98" title="极致缓存命中率">极致 98%</button>
+                        <button class="preset-tag" data-hitrate="50" data-i18n="presetHitLow"></button>
+                        <button class="preset-tag" data-hitrate="80" data-i18n="presetHitMid"></button>
+                        <button class="preset-tag" data-hitrate="90" data-i18n="presetHitHigh"></button>
+                        <button class="preset-tag" data-hitrate="98" data-i18n="presetHitMax"></button>
                     </span>
                 </div>
             </div>
             <div class="control-group">
-                <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg> Pro 模型占比</label>
+                <label data-i18n-title="mixTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg> <span data-i18n="mixLabel"></span></label>
                 <input type="range" id="mixSlider" min="0" max="100" step="1" value="20">
                 <div class="slider-value">
                     <span id="mixValue" class="value-badge">Pro 0% / Flash 100%</span>
                     <span class="preset-tags">
-                        <button class="preset-tag" data-mix="20">穷 20%</button>
-                        <button class="preset-tag" data-mix="40">小康 40%</button>
-                        <button class="preset-tag" data-mix="80">富 80%</button>
-                        <button class="preset-tag" data-mix="100">任性 100%</button>
+                        <button class="preset-tag" data-mix="20" data-i18n="presetMixPoor"></button>
+                        <button class="preset-tag" data-mix="40" data-i18n="presetMixMid"></button>
+                        <button class="preset-tag" data-mix="80" data-i18n="presetMixRich"></button>
+                        <button class="preset-tag" data-mix="100" data-i18n="presetMixMax"></button>
                     </span>
                 </div>
             </div>
             <!-- 预算数值 + 预算单位 + Token显示单位 同一行 -->
             <div class="budget-row">
                 <div class="budget-slider-group control-group">
-                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 预算数值</label>
+                    <label data-i18n-title="budgetTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="budgetLabel"></span></label>
                     <input type="range" id="budgetSlider" min="0" max="1000" step="0.1" value="1">
                     <div class="slider-value">
                         <span id="budgetValue" class="value-badge">1</span>
                         <input type="number" id="budgetNumber" value="1" step="0.1">
                         <span class="preset-tags">
-                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="1" title="预算单位Token，显示单位亿，预算1">1个小目标Token</button>
-                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="10" title="预算单位Token，显示单位亿，预算10">10亿Token大鳄</button>
-                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="10" title="预算单位元，显示单位亿，预算10">兜里只有10块钱</button>
-                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="100" title="预算单位元，显示单位亿，预算100">捡到100元</button>
+                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="1" data-i18n="presetTarget1"></button>
+                            <button class="preset-tag" data-bu="token" data-du="yi" data-bv="10" data-i18n="presetTarget10"></button>
+                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="10" data-i18n="presetTenYuan"></button>
+                            <button class="preset-tag" data-bu="yuan" data-du="yi" data-bv="100" data-i18n="presetHundredYuan"></button>
                         </span>
                     </div>
                 </div>
                 <div class="budget-unit-group control-group">
-                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-ruler"/></svg> 预算单位</label>
+                    <label data-i18n-title="budgetUnitTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-ruler"/></svg> <span data-i18n="budgetUnitLabel"></span></label>
                     <div class="unit-toggle" id="budgetUnitToggle">
-                        <button class="unit-opt" data-unit="yuan">元</button>
-                        <button class="unit-opt active" data-unit="token">Token数</button>
+                        <button class="unit-opt" data-unit="yuan" data-i18n="yuan"></button>
+                        <button class="unit-opt active" data-unit="token" data-i18n="token"></button>
                     </div>
                     <div id="tokenUnitHint" class="hint-text"><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 当前：输入总Token数(亿)，反算费用</div>
                 </div>
-                <div class="display-unit-group control-group">
-                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-chart"/></svg> Token 显示单位</label>
-                    <div class="unit-toggle" id="displayUnitToggle">
-                        <button class="unit-opt" data-disp="M">百万(M)</button>
-                        <button class="unit-opt active" data-disp="yi">亿</button>
+                <div class="currency-unit-group control-group" id="currencyToggleGroup" hidden>
+                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="currencyLabel"></span></label>
+                    <div class="unit-toggle" id="currencyToggle">
+                        <button class="unit-opt active" data-currency="cny" data-i18n="cnyLabel"></button>
+                        <button class="unit-opt" data-currency="usd" data-i18n="usdLabel"></button>
                     </div>
-                    <div id="displayHint" class="hint-text">影响所有 Token 数值</div>
+                    <div id="currencyHint" class="hint-text"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 切换模型计价的货币单位和价格</div>
+                </div>
+                <div class="display-unit-group control-group">
+                    <label data-i18n-title="dispUnitTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-chart"/></svg> <span data-i18n="dispUnitLabel"></span></label>
+                    <div class="unit-toggle" id="displayUnitToggle">
+                        <button class="unit-opt" data-disp="M" data-i18n="million"></button>
+                        <button class="unit-opt active" data-disp="yi" data-i18n="yi"></button>
+                    </div>
+                    <div id="displayHint" class="hint-text" data-i18n="hintDisp"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <div class="card">
+        <div class="card-title" data-i18n="result" style="margin-bottom:12px;"></div>
     <div class="model-grid">
         <div class="model-card">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#3b82f6"><use href="#icon-circle"/></svg></span>
-                <span class="model-title">DeepSeek-V4-Pro</span>
+                <span class="model-title" data-i18n="modelPro"></span>
             </div>
-            <div class="price-tag">命中 ¥0.025/M · 未命中 ¥3/M · 输出 ¥6/M</div>
-            <div class="stat"><div class="stat-label">输入 Tokens</div><div id="proInput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">输出 Tokens</div><div id="proOutput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">总 Tokens</div><div id="proTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 费用 (元)</div><div id="proCost" class="stat-number cost">-</div></div>
+            <div class="price-tag" id="priceProTag"></div>
+            <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="proInput" class="stat-number">-</div><div class="cache-detail" id="proCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="proCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="proCacheMiss">-</span></span></div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="proOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="proTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="proCost" class="stat-number cost">-</div></div>
             <div id="proNote" class="note"></div>
         </div>
         <div class="model-card">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#10b981"><use href="#icon-zap"/></svg></span>
-                <span class="model-title">DeepSeek-V4-Flash</span>
+                <span class="model-title" data-i18n="modelFlash"></span>
             </div>
-            <div class="price-tag">命中 ¥0.02/M · 未命中 ¥1/M · 输出 ¥2/M</div>
-            <div class="stat"><div class="stat-label">输入 Tokens</div><div id="flashInput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">输出 Tokens</div><div id="flashOutput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">总 Tokens</div><div id="flashTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 费用 (元)</div><div id="flashCost" class="stat-number cost">-</div></div>
+            <div class="price-tag" id="priceFlashTag"></div>
+            <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="flashInput" class="stat-number">-</div><div class="cache-detail" id="flashCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="flashCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="flashCacheMiss">-</span></span></div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="flashOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="flashTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="flashCost" class="stat-number cost">-</div></div>
             <div id="flashNote" class="note"></div>
         </div>
         <div class="model-card">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#a855f7"><use href="#icon-shuffle"/></svg></span>
-                <span class="model-title">混合 (Pro+Flash)</span>
+                <span class="model-title" data-i18n="modelMix"></span>
             </div>
-            <div class="price-tag">按预算比例拆分</div>
-            <div class="stat"><div class="stat-label">总输入 Tokens</div><div id="mixInput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">总输出 Tokens</div><div id="mixOutput" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label">总 Tokens</div><div id="mixTotal" class="stat-number">-</div></div>
-            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 总费用 (元)</div><div id="mixCost" class="stat-number cost">-</div></div>
+            <div class="price-tag" data-i18n="priceMix"></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotalInput"></div><div id="mixInput" class="stat-number">-</div><div class="cache-detail" id="mixCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="mixCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="mixCacheMiss">-</span></span></div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="mixOutput" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="mixTotal" class="stat-number">-</div></div>
+            <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statTotalCost"></span></div><div id="mixCost" class="stat-number cost">-</div></div>
             <div id="mixNote" class="note"></div>
         </div>
     </div>
+        <div id="explainContent" style="font-size:12px;color:var(--slate-500);line-height:1.7;padding-top:4px;" data-i18n="calcExplain"></div>
+    </div>
 
     <div class="card chart-card">
-        <div class="card-title">模型对比</div>
+        <div class="card-title" data-i18n="chartTitle"></div>
         <canvas id="compareChart"></canvas>
     </div>
 
-    <footer>
+    <footer data-i18n-footer>
         作者 <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> 考拉先生 · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a><br>
-        预算单位「Token数」时，输入的数值单位跟随「Token显示单位」联动（M 或 亿），内部自动转换为百万 Token 计算。<br>
-        混合模型按 Pro 占比拆分预算(元)或 Token 数。
+        <span data-i18n="footer"></span>
     </footer>
 </div>
 
 <script>
     (function(){
         const PRICES = {
-            pro: { hit: 0.025, miss: 3.0, out: 6.0 },
-            flash: { hit: 0.02, miss: 1.0, out: 2.0 }
+            cny: {
+                pro: { hit: 0.025, miss: 3.0, out: 6.0 },
+                flash: { hit: 0.02, miss: 1.0, out: 2.0 }
+            },
+            usd: {
+                pro: { hit: 0.003625, miss: 0.435, out: 0.87 },
+                flash: { hit: 0.0028, miss: 0.14, out: 0.28 }
+            }
         };
+
+        // i18n
+        const LANG = {
+            zh: {
+                title: 'DeepSeek 双向预算分析器',
+                paramSetting: '参数设置',
+                result: '计算结果',
+                calcTitle: '结果说明',
+                ratioLabel: '输入:输出 比例',
+                hitrateLabel: '缓存命中率',
+                mixLabel: 'Pro 模型占比',
+                budgetLabel: '预算数值',
+                budgetUnitLabel: '预算单位',
+                dispUnitLabel: 'Token 显示单位',
+                ratioTip: '输入 Token 与输出 Token 的比例。数值越大，每个输出 Token 所需的输入 Token 越多。编程场景通常需要大量上下文输入（高比例），问答场景输出更多（低比例）。',
+                hitrateTip: '缓存命中的比例。命中时使用低价，未命中按标准价计费。DeepSeek 自动复用上下文实现缓存。',
+                mixTip: 'Pro 模型在混合中的占比。0% 全 Flash，100% 全 Pro。混合模型按比例拆分预算分别计算。',
+                budgetTip: '预算金额（元）或总 Token 数，取决于「预算单位」的选择。调整可看到不同预算下的 Token 用量和费用。',
+                budgetUnitTip: '预算单位：元（输入金额自动计算 Token 用量）或 Token 数（输入 Token 数自动计算费用）。',
+                dispUnitTip: '所有 Token 数值的显示单位：百万（M）或亿（1亿=100M）。',
+                yuan: '元',
+                token: 'Token数',
+                million: '百万(M)',
+                yi: '亿',
+                presetAllInput: '全输入',
+                presetCodingAgent: '编程Agent',
+                presetCodeComplete: '代码补全',
+                presetDoc: '文档',
+                presetQA: '问答',
+                presetTranslate: '翻译',
+                presetAllOutput: '全输出',
+                presetHitLow: '低 50%',
+                presetHitMid: '中 80%',
+                presetHitHigh: '高 90%',
+                presetHitMax: '极致 98%',
+                presetMixPoor: '穷 20%',
+                presetMixMid: '小康 40%',
+                presetMixRich: '富 80%',
+                presetMixMax: '任性 100%',
+                presetTarget1: '1个小目标Token',
+                presetTarget10: '10亿Token大鳄',
+                presetTenYuan: '兜里只有10块钱',
+                presetHundredYuan: '捡到100元',
+                modelPro: 'DeepSeek-V4-Pro',
+                modelFlash: 'DeepSeek-V4-Flash',
+                modelMix: '混合 (Pro+Flash)',
+                priceHit: '命中',
+                priceMiss: '未命中',
+                priceOut: '输出',
+                priceMix: '按预算比例拆分',
+                statInput: '输入 Tokens',
+                statOutput: '输出 Tokens',
+                statTotal: '总 Tokens',
+                statCost: '费用',
+                statTotalInput: '总输入 Tokens',
+                statTotalCost: '总费用',
+                cacheHit: '命中',
+                cacheMiss: '未命中',
+                chartTitle: '模型对比',
+                chartInput: '输入-命中',
+                chartInputMiss: '输入-未命中',
+                chartOutput: '输出',
+                chartCost: '费用',
+                recTitle: '省钱方案',
+                recModel: '推荐模型',
+                recCost: '预计费用',
+                recSavings: '节省',
+                recPro: 'DeepSeek-V4-Pro',
+                recFlash: 'DeepSeek-V4-Flash',
+                recMix: '混合模型',
+                recUse: '推荐使用',
+                share: '分享',
+                screenshot: '截图',
+                screenshotCopied: '✓ 已复制',
+                screenshotSuccess: '截图已保存',
+                linkCopied: '✓ 已复制',
+                shareLinkCopied: '链接已复制',
+                budgetHintToken: '当前：输入总Token数({unit})，反算费用',
+                budgetHintYuan: '当前：输入预算金额，计算 Token 用量',
+                currencyHint: '切换模型计价的货币单位和价格',
+                hintDisp: '影响所有 Token 数值',
+                footer: '作者 MrKoala 考拉先生 · 预算单位「Token数」时，输入的数值单位跟随「Token显示单位」联动（M 或 亿），内部自动转换为百万 Token 计算。混合模型按 Pro 占比拆分预算(元)或 Token 数。',
+                allInput: '全输入',
+                allOutput: '全输出',
+                ratioPrefix: '比例',
+                proPercent: 'Pro',
+                flashPercent: 'Flash',
+                mixInputPrice: '输入混合单价',
+                output: '输出',
+                budget: '预算',
+                proBudget: 'Pro预算',
+                flashBudget: 'Flash预算',
+                proTokenAlloc: 'Pro分配Token',
+                flashAlloc: 'Flash分配',
+                totalCost: '总费用',
+                totalToken: '总Token',
+                proContribution: 'Pro贡献输入',
+                flashContribution: 'Flash贡献输入',
+                hit: '命中',
+                miss: '未命中',
+                saveCompared: '节省',
+                recommend: '推荐',
+                langEn: 'EN',
+                langZh: '中文',
+                chartAxisInput: '{unit} Tokens',
+                chartAxisCost: '费用',
+                headerDesc: '作者 <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> 考拉先生 · 支持预算单位：元 / Token数（单位跟随 Token 显示单位联动）；比例上限 1000:1，支持 Pro/Flash 混合计算 · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a>',
+                calcExplain: '基于当前参数计算三种方案的 Token 用量和费用。每张卡片显示输入（含缓存命中/未命中明细）、输出、总 Token 和费用。图表展示模型间对比。',
+                unitYi: '亿',
+                chartTotal: '合计',
+                currencyLabel: '币种',
+                cnyLabel: '¥ CNY',
+                usdLabel: '$ USD',
+            },
+            en: {
+                title: 'DeepSeek Budget Analyzer',
+                paramSetting: 'Parameters',
+                ratioLabel: 'Input:Output Ratio',
+                hitrateLabel: 'Cache Hit Rate',
+                mixLabel: 'Pro Model Ratio',
+                budgetLabel: 'Budget',
+                budgetUnitLabel: 'Budget Unit',
+                dispUnitLabel: 'Token Unit',
+                yuan: 'CNY',
+                token: 'Tokens',
+                million: 'Million (M)',
+                yi: 'B',
+                presetAllInput: 'All Input',
+                presetCodingAgent: 'Coding Agent',
+                presetCodeComplete: 'Code Compl.',
+                presetDoc: 'Document',
+                presetQA: 'Q&A',
+                presetTranslate: 'Translate',
+                presetAllOutput: 'All Output',
+                presetHitLow: 'Low 50%',
+                presetHitMid: 'Mid 80%',
+                presetHitHigh: 'High 90%',
+                presetHitMax: 'Ultra 98%',
+                presetMixPoor: 'Poor 20%',
+                presetMixMid: 'Modest 40%',
+                presetMixRich: 'Rich 80%',
+                presetMixMax: 'Max 100%',
+                presetTarget1: '100M Token',
+                presetTarget10: '1B Token',
+                presetTenYuan: 'Only 10',
+                presetHundredYuan: 'Found 100',
+                modelPro: 'DeepSeek-V4-Pro',
+                modelFlash: 'DeepSeek-V4-Flash',
+                modelMix: 'Hybrid (Pro+Flash)',
+                priceHit: 'Hit',
+                priceMiss: 'Miss',
+                priceOut: 'Out',
+                priceMix: 'Split by budget ratio',
+                statInput: 'Input Tokens',
+                statOutput: 'Output Tokens',
+                statTotal: 'Total Tokens',
+                statCost: 'Cost',
+                statTotalInput: 'Total Input Tokens',
+                statTotalCost: 'Total Cost',
+                cacheHit: 'Hit',
+                cacheMiss: 'Miss',
+                chartTitle: 'Model Comparison',
+                chartInput: 'Input-Hit',
+                chartInputMiss: 'Input-Miss',
+                chartOutput: 'Output',
+                chartCost: 'Cost',
+                recTitle: 'Savings Plan',
+                recModel: 'Recommended',
+                recCost: 'Est. Cost',
+                recSavings: 'Savings',
+                recPro: 'DeepSeek-V4-Pro',
+                recFlash: 'DeepSeek-V4-Flash',
+                recMix: 'Hybrid',
+                recUse: 'Use',
+                share: 'Share',
+                screenshot: 'Export',
+                screenshotCopied: '✓ Copied',
+                screenshotSuccess: 'Screenshot saved',
+                linkCopied: '✓ Copied',
+                shareLinkCopied: 'Link copied',
+                budgetHintToken: 'Input total tokens ({unit}), compute cost',
+                budgetHintYuan: 'Input budget amount, compute token usage',
+                currencyHint: 'Switch pricing currency & model rates',
+                hintDisp: 'Affects all token values (M = Million, B = Billion)',
+                footer: 'By MrKoala · When budget unit is "Tokens", the input value follows the display unit (M or B), auto-converted to millions internally. Hybrid model splits budget or tokens by Pro ratio.',
+                allInput: 'All Input',
+                allOutput: 'All Output',
+                ratioPrefix: 'Ratio',
+                proPercent: 'Pro',
+                flashPercent: 'Flash',
+                mixInputPrice: 'Avg Input Price',
+                output: 'Output',
+                budget: 'Budget',
+                proBudget: 'Pro Budget',
+                flashBudget: 'Flash Budget',
+                proTokenAlloc: 'Pro Tokens',
+                flashAlloc: 'Flash Tokens',
+                totalCost: 'Total Cost',
+                totalToken: 'Total Tokens',
+                proContribution: 'Pro Input',
+                flashContribution: 'Flash Input',
+                hit: 'Hit',
+                miss: 'Miss',
+                saveCompared: 'Save',
+                recommend: 'Recommend',
+                langEn: 'EN',
+                langZh: '中文',
+                result: 'Results',
+                calcTitle: 'Details',
+                ratioTip: 'Ratio of input tokens to output tokens. Higher values mean more input context per output token. Coding scenarios need high ratios, Q&A needs low ratios.',
+                hitrateTip: 'Cache hit rate. Hits use low prices, misses use standard pricing. DeepSeek auto-reuses context for caching.',
+                mixTip: 'Pro model ratio in hybrid. 0% = all Flash, 100% = all Pro. Budget is split by ratio for separate calculation.',
+                budgetTip: 'Budget amount (CNY) or total tokens, depending on "Budget Unit". Adjust to see token usage and costs.',
+                budgetUnitTip: 'Budget unit: CNY (enter amount, compute tokens) or Tokens (enter tokens, compute cost).',
+                dispUnitTip: 'Display unit for all token values: Million (M) or Billion (B)',
+                chartAxisInput: '{unit} Tokens',
+                chartAxisCost: 'Cost',
+                headerDesc: 'By <a href="https://github.com/Mr-Koala" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">MrKoala</a> · Budget in Yuan or Tokens; ratio up to 1000:1, supports Pro/Flash hybrid · <a href="https://github.com/Mr-Koala/deepseek-price-calculator" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:600;">GitHub</a>',
+                calcExplain: 'Computes token usage and cost for 3 scenarios based on parameters. Each card shows input (with cache hit/miss details), output, total tokens, and cost. Chart compares all models.',
+                unitYi: 'B',
+                chartTotal: 'Total',
+                currencyLabel: 'Currency',
+                cnyLabel: '¥ CNY',
+                usdLabel: '$ USD',
+            }
+        };
+        let lang = 'zh';
+        function t(key) { return LANG[lang][key] || key; }
 
         const ratioSlider = document.getElementById('ratioSlider');
         const hitrateSlider = document.getElementById('hitrateSlider');
@@ -707,12 +1034,21 @@
         const proNote = document.getElementById('proNote');
         const flashNote = document.getElementById('flashNote');
         const mixNote = document.getElementById('mixNote');
+        const proCacheHit = document.getElementById('proCacheHit');
+        const proCacheMiss = document.getElementById('proCacheMiss');
+        const flashCacheHit = document.getElementById('flashCacheHit');
+        const flashCacheMiss = document.getElementById('flashCacheMiss');
+        const mixCacheHit = document.getElementById('mixCacheHit');
+        const mixCacheMiss = document.getElementById('mixCacheMiss');
+        const langBtn = document.getElementById('langBtn');
+        const screenshotBtn = document.getElementById('screenshotBtn');
+        const headerTitle = document.getElementById('headerTitle');
 
         let chart = null;
         Chart.register({
             id: 'lineOnTop',
             afterDatasetsDraw(ch) {
-                const ds = ch.data.datasets[2];
+                const ds = ch.data.datasets[3];
                 const data = ds && ds.data;
                 if (!data || data.length === 0) return;
                 const xS = ch.scales.x;
@@ -747,20 +1083,49 @@
         let budgetUnit = 'token';
         let displayUnit = 'yi';
         let allInputMode = false;
+        let currency = 'cny';
+        let exchangeRate = 7.0;
 
+        function getCurrencySymbol() {
+            return currency === 'usd' ? '$' : '\u00A5';
+        }
+        function prices() {
+            return PRICES[currency];
+        }
+
+        // 异步获取实时汇率
+        (async function fetchRate() {
+            try {
+                const resp = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.rates && data.rates.USD) {
+                        exchangeRate = data.rates.USD;
+                    }
+                }
+            } catch (_) { /* fallback to 7.0 */ }
+        })();
+
+        function getDisplayDivisor(unit) {
+            const u = unit || displayUnit;
+            if (u === 'M') return 1;
+            return lang === 'en' ? 1000 : 100;
+        }
         function formatToken(millionTokens) {
             if (millionTokens === undefined || isNaN(millionTokens)) return '0';
+            const divisor = getDisplayDivisor();
             if (displayUnit === 'M') {
                 if (millionTokens > 0 && millionTokens < 0.01) {
                     return millionTokens.toFixed(4) + ' M';
                 }
                 return millionTokens.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M';
             } else {
-                let yi = millionTokens / 100;
-                if (yi > 0 && yi < 0.01) {
-                    return yi.toFixed(4) + ' 亿';
+                const val = millionTokens / divisor;
+                const label = t('unitYi');
+                if (val > 0 && val < 0.01) {
+                    return val.toFixed(4) + ' ' + label;
                 }
-                return yi.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' 亿';
+                return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + label;
             }
         }
 
@@ -793,8 +1158,8 @@
             if (isTokenMode) {
                 const proTotalTokens = totalBudgetValue * proRatio;
                 const flashTotalTokens = totalBudgetValue * (1 - proRatio);
-                const proRes = computeFromTotalTokens(r, proTotalTokens, hitRate, PRICES.pro);
-                const flashRes = computeFromTotalTokens(r, flashTotalTokens, hitRate, PRICES.flash);
+                const proRes = computeFromTotalTokens(r, proTotalTokens, hitRate, prices().pro);
+                const flashRes = computeFromTotalTokens(r, flashTotalTokens, hitRate, prices().flash);
                 return {
                     inputM: proRes.inputM + flashRes.inputM,
                     outputM: proRes.outputM + flashRes.outputM,
@@ -808,8 +1173,8 @@
             } else {
                 const proBudget = totalBudgetValue * proRatio;
                 const flashBudget = totalBudgetValue * (1 - proRatio);
-                const proRes = computeFromBudget(proBudget, r, hitRate, PRICES.pro);
-                const flashRes = computeFromBudget(flashBudget, r, hitRate, PRICES.flash);
+                const proRes = computeFromBudget(proBudget, r, hitRate, prices().pro);
+                const flashRes = computeFromBudget(flashBudget, r, hitRate, prices().flash);
                 return {
                     inputM: proRes.inputM + flashRes.inputM,
                     outputM: proRes.outputM + flashRes.outputM,
@@ -846,13 +1211,14 @@
             let rawVal = parseFloat(budgetSlider.value);
             if (isNaN(rawVal)) rawVal = budgetUnit === 'yuan' ? 119 : 10;
             if (budgetUnit === 'token') {
-                return displayUnit === 'M' ? rawVal : rawVal * 100;
+                return displayUnit === 'M' ? rawVal : rawVal * getDisplayDivisor();
             } else {
                 return rawVal;
             }
         }
 
         function updateAll() {
+            const sym = getCurrencySymbol();
             let ratio = parseFloat(ratioSlider.value);
             let hitRate = parseFloat(hitrateSlider.value) / 100;
             let proRatio = parseFloat(mixSlider.value) / 100;
@@ -860,7 +1226,7 @@
             if (isNaN(hitRate)) hitRate = 0.5;
             if (isNaN(proRatio)) proRatio = 0;
 
-            ratioValue.innerText = allInputMode ? "1 : 0（全输入）" : (ratio === 0 ? "0 : 1（全输出）" : ratio.toFixed(1) + " : 1");
+            ratioValue.innerText = allInputMode ? "1 : 0 (" + t('allInput') + ")" : (ratio === 0 ? "0 : 1 (" + t('allOutput') + ")" : (ratio % 1 === 0 ? ratio.toFixed(0) : ratio.toFixed(1)) + " : 1");
             // 高亮匹配的预设标签
             document.querySelectorAll('.preset-tag').forEach(tag => {
                 if (tag.dataset.ratio === 'allinput') {
@@ -886,21 +1252,22 @@
             let internalBudget = getCurrentBudgetValue();
             let displayBudgetValue = parseFloat(budgetSlider.value);
             if (isNaN(displayBudgetValue)) displayBudgetValue = 0;
-            budgetValueSpan.innerText = displayBudgetValue.toFixed(budgetUnit==='token' && displayUnit==='yi' ? 2 : 0);
+            budgetValueSpan.innerText = displayBudgetValue.toFixed(0);
             budgetNumber.value = displayBudgetValue;
 
             if (budgetUnit === 'yuan') {
-                tokenUnitHint.innerHTML = '<svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> 当前：输入预算金额(元)，计算 Token 用量';
+                const curLabel = lang === 'zh' ? '(元)' : `(${sym})`;
+                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> ${t('budgetHintYuan')} ${curLabel}`;
             } else {
-                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 当前：输入总Token数(${displayUnit === 'M' ? '百万' : '亿'})，反算费用`;
+                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> ${t('budgetHintToken').replace('{unit}', displayUnit === 'M' ? 'M' : t('unitYi'))}`;
             }
 
             let proRes, flashRes, mixedRes;
 
             if (allInputMode) {
                 // 全输入：所有预算/Token 都用于输入，输出为 0
-                const inputPricePro = PRICES.pro.hit * hitRate + PRICES.pro.miss * (1 - hitRate);
-                const inputPriceFlash = PRICES.flash.hit * hitRate + PRICES.flash.miss * (1 - hitRate);
+                const inputPricePro = prices().pro.hit * hitRate + prices().pro.miss * (1 - hitRate);
+                const inputPriceFlash = prices().flash.hit * hitRate + prices().flash.miss * (1 - hitRate);
                 if (budgetUnit === 'yuan') {
                     const proBudget = internalBudget * proRatio;
                     const flashBudget = internalBudget * (1 - proRatio);
@@ -930,27 +1297,27 @@
                         proCost: proPortion * inputPricePro, flashCost: flashPortion * inputPriceFlash
                     };
                 }
-                proCostSpan.innerText = '¥ ' + proRes.cost.toFixed(2);
-                flashCostSpan.innerText = '¥ ' + flashRes.cost.toFixed(2);
-                mixCostSpan.innerText = '¥ ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(2);
+                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(2);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
             } else if (budgetUnit === 'yuan') {
-                proRes = computeFromBudget(internalBudget, ratio, hitRate, PRICES.pro);
-                flashRes = computeFromBudget(internalBudget, ratio, hitRate, PRICES.flash);
+                proRes = computeFromBudget(internalBudget, ratio, hitRate, prices().pro);
+                flashRes = computeFromBudget(internalBudget, ratio, hitRate, prices().flash);
                 mixedRes = computeMixed(proRatio, internalBudget, ratio, hitRate, false);
-                proCostSpan.innerText = '¥ ' + internalBudget.toFixed(2);
-                flashCostSpan.innerText = '¥ ' + internalBudget.toFixed(2);
-                mixCostSpan.innerText = '¥ ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + internalBudget.toFixed(2);
+                flashCostSpan.innerText = sym + ' ' + internalBudget.toFixed(2);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
             } else {
                 let totalTokenM = internalBudget;
                 // 单体模型卡片：按 mix 比例拆分，避免 Pro=0% 时仍显示全部 Token
                 const proPortion = totalTokenM * proRatio;
                 const flashPortion = totalTokenM * (1 - proRatio);
-                proRes = computeFromTotalTokens(ratio, proPortion, hitRate, PRICES.pro);
-                flashRes = computeFromTotalTokens(ratio, flashPortion, hitRate, PRICES.flash);
+                proRes = computeFromTotalTokens(ratio, proPortion, hitRate, prices().pro);
+                flashRes = computeFromTotalTokens(ratio, flashPortion, hitRate, prices().flash);
                 mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true);
-                proCostSpan.innerText = '¥ ' + proRes.cost.toFixed(2);
-                flashCostSpan.innerText = '¥ ' + flashRes.cost.toFixed(2);
-                mixCostSpan.innerText = '¥ ' + mixedRes.cost.toFixed(2);
+                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(2);
+                flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(2);
+                mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(2);
             }
 
             proInputSpan.innerText = formatToken(proRes.inputM);
@@ -963,36 +1330,60 @@
             mixOutputSpan.innerText = formatToken(mixedRes.outputM);
             mixTotalSpan.innerText = formatToken(mixedRes.totalM);
 
-            const inputPricePro = (PRICES.pro.hit*hitRate + PRICES.pro.miss*(1-hitRate));
-            const inputPriceFlash = (PRICES.flash.hit*hitRate + PRICES.flash.miss*(1-hitRate));
+            const inputPricePro = (prices().pro.hit*hitRate + prices().pro.miss*(1-hitRate));
+            const inputPriceFlash = (prices().flash.hit*hitRate + prices().flash.miss*(1-hitRate));
 
-            const ratioLabel = allInputMode ? '全输入' : (ratio === 0 ? '全输出' : `比例 ${ratio}:1`);
+            const ratioLabel = allInputMode ? t('allInput') : (ratio === 0 ? t('allOutput') : t('ratioPrefix') + ' ' + ratio + ':1');
             if (budgetUnit === 'yuan') {
-                proNote.innerHTML = `输入混合单价 ¥${inputPricePro.toFixed(4)}/M | 输出 ¥${PRICES.pro.out}/M<br>${ratioLabel} · 预算 ¥${internalBudget.toFixed(2)}`;
-                flashNote.innerHTML = `输入混合单价 ¥${inputPriceFlash.toFixed(4)}/M | 输出 ¥${PRICES.flash.out}/M<br>${ratioLabel} · 预算 ¥${internalBudget.toFixed(2)}`;
-                mixNote.innerHTML = `Pro预算 ¥${mixedRes.proBudgetYuan?.toFixed(2)} (${(proRatio*100).toFixed(0)}%) + Flash预算 ¥${mixedRes.flashBudgetYuan?.toFixed(2)}<br>Pro贡献输入 ${formatToken(mixedRes.proInput)} / Flash贡献输入 ${formatToken(mixedRes.flashInput)}`;
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(2);
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(2);
+                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(2) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(2) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput);
             } else {
                 let totalTokenForDisplay = internalBudget;
-                let displayTotal = (displayUnit === 'M') ? totalTokenForDisplay.toFixed(2) + 'M' : (totalTokenForDisplay/100).toFixed(2) + '亿';
-                proNote.innerHTML = `输入混合单价 ¥${inputPricePro.toFixed(4)}/M | 输出 ¥${PRICES.pro.out}/M<br>${ratioLabel} · 总Token ${displayTotal}`;
-                flashNote.innerHTML = `输入混合单价 ¥${inputPriceFlash.toFixed(4)}/M | 输出 ¥${PRICES.flash.out}/M<br>${ratioLabel} · 总Token ${displayTotal}`;
-                let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/100).toFixed(2)+'亿';
-                let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/100).toFixed(2)+'亿';
-                mixNote.innerHTML = `Pro分配Token ${proTokenDisplay} (${(proRatio*100).toFixed(0)}%) + Flash分配 ${flashTokenDisplay}<br>总费用 ¥${mixedRes.cost.toFixed(2)}`;
+                let displayDiv = getDisplayDivisor();
+                let displayUnitLabel = t('unitYi');
+                let displayTotal = (displayUnit === 'M') ? totalTokenForDisplay.toFixed(2) + 'M' : (totalTokenForDisplay/displayDiv).toFixed(2) + displayUnitLabel;
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal;
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal;
+                let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
+                let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
+                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(2);
             }
 
-            const unitLabel = displayUnit === 'M' ? '百万' : '亿';
-            const tokenDivisor = displayUnit === 'M' ? 1 : 100;
+            // === 缓存命中/未命中明细 ===
+            const _proInputM = proRes.inputM, _flashInputM = flashRes.inputM, _mixInputM = mixedRes.inputM;
+            const proHitM = _proInputM * hitRate;
+            const proMissM = _proInputM * (1 - hitRate);
+            const flashHitM = _flashInputM * hitRate;
+            const flashMissM = _flashInputM * (1 - hitRate);
+            const mixHitM = _mixInputM * hitRate;
+            const mixMissM = _mixInputM * (1 - hitRate);
+            const proHC = proHitM * prices().pro.hit;
+            const proMC = proMissM * prices().pro.miss;
+            const flashHC = flashHitM * prices().flash.hit;
+            const flashMC = flashMissM * prices().flash.miss;
+            const mixAvgHitPrice = proRatio * prices().pro.hit + (1-proRatio) * prices().flash.hit;
+            const mixAvgMissPrice = proRatio * prices().pro.miss + (1-proRatio) * prices().flash.miss;
+            proCacheHit.innerText = `${formatToken(proHitM)} (${sym}${proHC.toFixed(2)})`;
+            proCacheMiss.innerText = `${formatToken(proMissM)} (${sym}${proMC.toFixed(2)})`;
+            flashCacheHit.innerText = `${formatToken(flashHitM)} (${sym}${flashHC.toFixed(2)})`;
+            flashCacheMiss.innerText = `${formatToken(flashMissM)} (${sym}${flashMC.toFixed(2)})`;
+            mixCacheHit.innerText = `${formatToken(mixHitM)} (${sym}${(mixHitM * mixAvgHitPrice).toFixed(2)})`;
+            mixCacheMiss.innerText = `${formatToken(mixMissM)} (${sym}${(mixMissM * mixAvgMissPrice).toFixed(2)})`;
+
+            const unitLabel = displayUnit === 'M' ? 'M' : t('unitYi');
+            const tokenDivisor = displayUnit === 'M' ? 1 : getDisplayDivisor();
             if (chart) chart.destroy();
             const ctx = document.getElementById('compareChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['DeepSeek-V4-Pro', 'DeepSeek-V4-Flash', '混合模型'],
+                    labels: [t('modelPro'), t('modelFlash'), t('modelMix')],
                     datasets: [
-                        { label: `输入 Tokens (${unitLabel})`, data: [proRes.inputM/tokenDivisor, flashRes.inputM/tokenDivisor, mixedRes.inputM/tokenDivisor], backgroundColor: '#10b981', borderRadius: 6, yAxisID: 'y', stack: 'stack0' },
-                        { label: `输出 Tokens (${unitLabel})`, data: [proRes.outputM/tokenDivisor, flashRes.outputM/tokenDivisor, mixedRes.outputM/tokenDivisor], backgroundColor: '#f59e0b', borderRadius: 6, yAxisID: 'y', stack: 'stack0' },
-                        { label: '费用 (元)', type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' }
+                        { label: `${t('chartInput')} (${unitLabel})`, data: [proRes.inputM*hitRate/tokenDivisor, flashRes.inputM*hitRate/tokenDivisor, mixedRes.inputM*hitRate/tokenDivisor], backgroundColor: '#059669', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
+                        { label: `${t('chartInputMiss')} (${unitLabel})`, data: [proRes.inputM*(1-hitRate)/tokenDivisor, flashRes.inputM*(1-hitRate)/tokenDivisor, mixedRes.inputM*(1-hitRate)/tokenDivisor], backgroundColor: '#6ee7b7', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
+                        { label: `${t('chartOutput')} (${unitLabel})`, data: [proRes.outputM/tokenDivisor, flashRes.outputM/tokenDivisor, mixedRes.outputM/tokenDivisor], backgroundColor: '#f59e0b', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
+                        { label: `${t('chartCost')}`, type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' }
                     ]
                 },
                 options: {
@@ -1011,7 +1402,7 @@
                             padding: 10, cornerRadius: 6,
                             callbacks: { label: (ctx) => {
                                 const datasets = ctx.chart.data.datasets;
-                                if (ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ¥${ctx.raw.toFixed(2)}`;
+                                if (ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ${sym}${ctx.raw.toFixed(2)}`;
                                 // 计算总 Tokens（堆积和）
                                 let total = 0;
                                 for (let i = 0; i < datasets.length; i++) {
@@ -1019,7 +1410,7 @@
                                         total += datasets[i].data[ctx.dataIndex];
                                     }
                                 }
-                                return ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} ${unitLabel} (合计: ${total.toFixed(2)} ${unitLabel})`;
+                                return ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} ${unitLabel} (${t('chartTotal')}: ${total.toFixed(2)} ${unitLabel})`;
                             }}
                         }
                     },
@@ -1027,16 +1418,16 @@
                         y: {
                             beginAtZero: true,
                             position: 'left',
-                            title: { display: true, text: unitLabel + ' Tokens', font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
+                            title: { display: true, text: t('chartAxisInput').replace('{unit}', unitLabel), font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
                             grid: { color: '#f1f5f9' },
-                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => displayUnit === 'M' ? v.toFixed(0) + 'M' : v.toFixed(1) + '亿' }
+                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => displayUnit === 'M' ? v.toFixed(0) + 'M' : v.toFixed(1) + t('unitYi') }
                         },
                         y1: {
                             beginAtZero: true,
                             position: 'right',
-                            title: { display: true, text: '费用 (元)', font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
+                            title: { display: true, text: t('chartAxisCost') + ` (${sym})`, font: { family: 'Inter', size: 11, weight: '500' }, color: '#64748b' },
                             grid: { drawOnChartArea: false },
-                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => '¥' + v.toFixed(1) }
+                            ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8', callback: (v) => sym + v.toFixed(1) }
                         },
                         x: {
                             grid: { display: false },
@@ -1045,8 +1436,18 @@
                     }
                 }
             });
+            // 动态价格标签（根据币种实时更新）
+            const p = prices();
+            const fmt = (v) => {
+                if (v < 0.01) return v.toFixed(4);
+                if (v < 1) return v.toFixed(3);
+                return v.toFixed(v % 1 === 0 ? 0 : 2);
+            };
+            const proPriceTag = `${t('priceHit')} ${sym}${fmt(p.pro.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.pro.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.pro.out)}/M`;
+            const flashPriceTag = `${t('priceHit')} ${sym}${fmt(p.flash.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.flash.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.flash.out)}/M`;
+            document.querySelectorAll('#priceProTag').forEach(el => { el.textContent = proPriceTag; });
+            document.querySelectorAll('#priceFlashTag').forEach(el => { el.textContent = flashPriceTag; });
         }
-
         ratioSlider.addEventListener('input', () => { allInputMode = false; updateAll(); });
         document.querySelectorAll('.preset-tag').forEach(tag => {
             tag.addEventListener('click', () => {
@@ -1111,9 +1512,9 @@
                 const oldUnit = displayUnit;
                 displayUnit = btn.getAttribute('data-disp');
                 if (budgetUnit === 'token') {
-                    let currentInternal = parseFloat(budgetSlider.value) * (oldUnit === 'M' ? 1 : 100);
+                    let currentInternal = parseFloat(budgetSlider.value) * getDisplayDivisor(oldUnit);
                     updateSliderRange();
-                    budgetSlider.value = displayUnit === 'M' ? currentInternal : currentInternal / 100;
+                    budgetSlider.value = currentInternal / getDisplayDivisor();
                     budgetNumber.value = budgetSlider.value;
                 } else {
                     updateSliderRange();
@@ -1123,12 +1524,75 @@
             });
         });
 
-        // URL Hash 分享
+        // 币种切换
+        const currencyButtons = document.querySelectorAll('#currencyToggle .unit-opt');
+        currencyButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newCurrency = btn.getAttribute('data-currency');
+                if (newCurrency === currency) return;
+                if (budgetUnit === 'yuan') {
+                    let currentVal = parseFloat(budgetSlider.value);
+                    if (isNaN(currentVal)) currentVal = 119;
+                    if (currency === 'cny' && newCurrency === 'usd') {
+                        currentVal = currentVal / exchangeRate;
+                    } else if (currency === 'usd' && newCurrency === 'cny') {
+                        currentVal = currentVal * exchangeRate;
+                    }
+                    budgetSlider.value = currentVal.toFixed(2);
+                    budgetNumber.value = budgetSlider.value;
+                }
+                currency = newCurrency;
+                currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
+                updateAll();
+                syncHash();
+            });
+        });
+        function saveState() {
+            const state = {
+                r: ratioSlider.value,
+                h: hitrateSlider.value,
+                m: mixSlider.value,
+                b: budgetSlider.value,
+                u: budgetUnit,
+                d: displayUnit,
+                a: allInputMode,
+                c: currency
+            };
+            try { localStorage.setItem('calcState', JSON.stringify(state)); } catch(e) {}
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem('calcState');
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                if (s.r !== undefined) ratioSlider.value = s.r;
+                if (s.h !== undefined) hitrateSlider.value = s.h;
+                if (s.m !== undefined) mixSlider.value = s.m;
+                if (s.b !== undefined) { budgetSlider.value = s.b; budgetNumber.value = s.b; }
+                if (s.u !== undefined) {
+                    budgetUnit = s.u;
+                    budgetButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-unit') === budgetUnit));
+                }
+                if (s.d !== undefined) {
+                    displayUnit = s.d;
+                    displayButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-disp') === displayUnit));
+                }
+                if (s.a !== undefined) allInputMode = s.a;
+                if (s.c !== undefined) {
+                    currency = s.c;
+                    currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
+                }
+            } catch(e) {}
+        }
+
         function syncHash() {
+            saveState();
             const params = new URLSearchParams({
                 b: budgetSlider.value,
                 u: budgetUnit,
                 d: displayUnit,
+                c: currency,
                 r: ratioSlider.value,
                 h: hitrateSlider.value,
                 m: mixSlider.value
@@ -1148,6 +1612,10 @@
                 if (p.has('d')) {
                     displayUnit = p.get('d');
                     displayButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-disp') === displayUnit));
+                }
+                if (p.has('c')) {
+                    currency = p.get('c');
+                    currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
                 }
                 if (p.has('r')) ratioSlider.value = p.get('r');
                 if (p.has('h')) hitrateSlider.value = p.get('h');
@@ -1179,7 +1647,131 @@
             s.addEventListener('input', syncHash);
         });
 
+        loadState();
         loadFromHash();
+
+        // 从 localStorage 恢复语言偏好
+        const storedLang = localStorage.getItem('lang');
+        if (storedLang === 'en' || storedLang === 'zh') {
+            lang = storedLang;
+        }
+
+        updateSliderRange();
+        applyLang();
+        syncHash();
+
+        // 语言切换
+        function applyLang() {
+            // data-i18n 静态文本
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.getAttribute('data-i18n'));
+            });
+            // data-i18n-title tooltip → 自定义悬浮提示
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                el.setAttribute('data-tip', t(el.getAttribute('data-i18n-title')));
+                el.setAttribute('tooltip-hover', '');
+                el.removeAttribute('title');
+            });
+            // 币种切换可见性：仅 EN 模式显示
+            document.getElementById('currencyToggleGroup').hidden = (lang !== 'en');
+            const currencyHint = document.getElementById('currencyHint');
+            if (currencyHint) currencyHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> ${t('currencyHint')}`;
+            // 币种相关标签动态追加币种后缀
+            const sym = getCurrencySymbol();
+            const curSuffix = lang === 'zh' ? ' (元)' : ` (${sym})`;
+            document.querySelectorAll('[data-i18n="statCost"]').forEach(el => { el.textContent = t('statCost') + curSuffix; });
+            document.querySelectorAll('[data-i18n="statTotalCost"]').forEach(el => { el.textContent = t('statTotalCost') + curSuffix; });
+            document.querySelectorAll('[data-i18n="chartCost"]').forEach(el => { el.textContent = t('chartCost') + curSuffix; });
+            document.querySelectorAll('[data-i18n="chartAxisCost"]').forEach(el => { el.textContent = t('chartAxisCost') + curSuffix; });
+            // 预算数值预设标签动态币种
+            document.querySelectorAll('.preset-tag[data-i18n="presetTenYuan"]').forEach(el => {
+                if (lang === 'zh') el.textContent = '兜里只有' + parseInt(el.dataset.bv) + '块钱';
+                else el.textContent = 'Only ' + sym + parseInt(el.dataset.bv);
+            });
+            document.querySelectorAll('.preset-tag[data-i18n="presetHundredYuan"]').forEach(el => {
+                if (lang === 'zh') el.textContent = '捡到' + parseInt(el.dataset.bv) + '元';
+                else el.textContent = 'Found ' + sym + parseInt(el.dataset.bv);
+            });
+            // 更新提示文字
+            if (budgetUnit === 'yuan') {
+                const curLabel = lang === 'zh' ? '(元)' : `(${sym})`;
+                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> ${t('budgetHintYuan')} ${curLabel}`;
+            } else {
+                const unitStr = displayUnit === 'M' ? 'M' : t('unitYi');
+                tokenUnitHint.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> ${t('budgetHintToken').replace('{unit}', unitStr)}`;
+            }
+            // 按钮文字
+            langBtn.textContent = lang === 'zh' ? t('langEn') : t('langZh');
+            langBtn.title = lang === 'zh' ? 'Switch to English' : '切换到中文';
+            screenshotBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg><span class="btn-text"> ${t('screenshot')}</span>`;
+            shareBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> ${t('share')}</span>`;
+            // header desc
+            const headerDesc = document.querySelector('[data-i18n="headerDesc"]');
+            if (headerDesc) headerDesc.innerHTML = t('headerDesc');
+            // footer
+            document.querySelectorAll('[data-i18n-footer]').forEach(el => {
+                el.innerHTML = t('footer');
+            });
+            // updateAll 会重新渲染动态内容
+            updateAll();
+        }
+
+        // 截图
+        screenshotBtn.addEventListener('click', async () => {
+            try {
+                screenshotBtn.disabled = true;
+                screenshotBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg> ${t('screenshotSuccess')}`;
+                const container = document.querySelector('.container');
+                const canvas = await html2canvas(container, {
+                    backgroundColor: getComputedStyle(document.body).backgroundColor,
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    onclone: (doc) => {
+                        // 将 SVG <use href="#icon-xxx"> 展平为内联 SVG，解决 html2canvas 无法渲染 <symbol> 的问题
+                        const spriteSvg = doc.querySelector('svg[aria-hidden="true"][style*="overflow"]');
+                        const uses = doc.querySelectorAll('use[href^="#icon-"]');
+                        uses.forEach(use => {
+                            const id = use.getAttribute('href');
+                            const symbol = spriteSvg ? spriteSvg.querySelector(id) : null;
+                            if (!symbol) return;
+                            const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                            svg.setAttribute('class', use.getAttribute('class') || '');
+                            svg.setAttribute('aria-hidden', 'true');
+                            svg.setAttribute('width', '14');
+                            svg.setAttribute('height', '14');
+                            svg.style.display = 'inline-block';
+                            svg.style.verticalAlign = 'middle';
+                            svg.style.flexShrink = '0';
+                            // 复制 symbol 的属性到 svg
+                            if (symbol.getAttribute('viewBox')) svg.setAttribute('viewBox', symbol.getAttribute('viewBox'));
+                            if (symbol.getAttribute('fill')) svg.setAttribute('fill', symbol.getAttribute('fill'));
+                            if (symbol.getAttribute('stroke')) svg.setAttribute('stroke', symbol.getAttribute('stroke'));
+                            if (symbol.getAttribute('stroke-width')) svg.setAttribute('stroke-width', symbol.getAttribute('stroke-width'));
+                            if (symbol.getAttribute('stroke-linecap')) svg.setAttribute('stroke-linecap', symbol.getAttribute('stroke-linecap'));
+                            if (symbol.getAttribute('stroke-linejoin')) svg.setAttribute('stroke-linejoin', symbol.getAttribute('stroke-linejoin'));
+                            // 复制所有子元素
+                            Array.from(symbol.childNodes).forEach(child => {
+                                svg.appendChild(child.cloneNode(true));
+                            });
+                            use.parentNode.replaceChild(svg, use);
+                        });
+                    }
+                });
+                const link = document.createElement('a');
+                link.download = `deepseek-budget-${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                setTimeout(() => {
+                    screenshotBtn.disabled = false;
+                    screenshotBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg><span class="btn-text"> ${t('screenshot')}</span>`;
+                }, 2000);
+            } catch(e) {
+                screenshotBtn.disabled = false;
+                screenshotBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg><span class="btn-text"> ${t('screenshot')}</span>`;
+                alert('截图失败: ' + e.message);
+            }
+        });
 
         // 主题切换
         function applyTheme(mode) {
@@ -1213,9 +1805,36 @@
             }
         });
 
-        updateSliderRange();
-        updateAll();
-    })();
+        // 语言切换
+        langBtn.addEventListener('click', () => {
+            const oldLang = lang;
+            lang = lang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', lang);
+            // 切到中文：强制 CNY；切到英文：保持当前币种
+            if (lang === 'zh' && currency === 'usd' && budgetUnit === 'yuan') {
+                let currentVal = parseFloat(budgetSlider.value);
+                if (!isNaN(currentVal)) {
+                    currentVal = currentVal * exchangeRate;
+                    budgetSlider.value = currentVal.toFixed(2);
+                    budgetNumber.value = budgetSlider.value;
+                }
+                currency = 'cny';
+                currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === 'cny'));
+            }
+            // 预算单位=Token数 且 显示单位为亿/B 时，中英切换需换算数值
+            if (budgetUnit === 'token' && displayUnit !== 'M') {
+                const factor = 10;
+                if (oldLang === 'zh' && lang === 'en') {
+                    budgetSlider.value = (parseFloat(budgetSlider.value) / factor).toFixed(2);
+                } else if (oldLang === 'en' && lang === 'zh') {
+                    budgetSlider.value = (parseFloat(budgetSlider.value) * factor).toFixed(2);
+                }
+                budgetNumber.value = budgetSlider.value;
+            }
+            applyLang();
+        });
+
+        })();
 </script>
 </body>
 </html>
