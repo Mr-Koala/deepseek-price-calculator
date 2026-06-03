@@ -688,7 +688,7 @@
                 <div class="budget-unit-group control-group">
                     <label data-i18n-title="budgetUnitTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-ruler"/></svg> <span data-i18n="budgetUnitLabel"></span></label>
                     <div class="unit-toggle" id="budgetUnitToggle">
-                        <button class="unit-opt" data-unit="yuan" data-i18n="yuan"></button>
+                        <button class="unit-opt" data-unit="yuan" id="yuanUnitBtn">¥</button>
                         <button class="unit-opt active" data-unit="token" data-i18n="token"></button>
                     </div>
                     <div id="tokenUnitHint" class="hint-text"><svg class="svg-icon" aria-hidden="true"><use href="#icon-target"/></svg> 当前：输入总Token数(亿)，反算费用</div>
@@ -792,7 +792,7 @@
                 mixLabel: 'Pro 模型占比',
                 budgetLabel: '预算数值',
                 budgetUnitLabel: '预算单位',
-                dispUnitLabel: 'Token 显示单位',
+                dispUnitLabel: 'Token单位',
                 ratioTip: '输入 Token 与输出 Token 的比例。数值越大，每个输出 Token 所需的输入 Token 越多。编程场景通常需要大量上下文输入（高比例），问答场景输出更多（低比例）。',
                 hitrateTip: '缓存命中的比例。命中时使用低价，未命中按标准价计费。DeepSeek 自动复用上下文实现缓存。',
                 mixTip: 'Pro 模型在混合中的占比。0% 全 Flash，100% 全 Pro。混合模型按比例拆分预算分别计算。',
@@ -1530,19 +1530,9 @@
             btn.addEventListener('click', () => {
                 const newCurrency = btn.getAttribute('data-currency');
                 if (newCurrency === currency) return;
-                if (budgetUnit === 'yuan') {
-                    let currentVal = parseFloat(budgetSlider.value);
-                    if (isNaN(currentVal)) currentVal = 119;
-                    if (currency === 'cny' && newCurrency === 'usd') {
-                        currentVal = currentVal / exchangeRate;
-                    } else if (currency === 'usd' && newCurrency === 'cny') {
-                        currentVal = currentVal * exchangeRate;
-                    }
-                    budgetSlider.value = currentVal.toFixed(2);
-                    budgetNumber.value = budgetSlider.value;
-                }
                 currency = newCurrency;
                 currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
+                document.getElementById('yuanUnitBtn').textContent = lang === 'zh' ? '元' : (currency === 'usd' ? 'USD' : 'CNY');
                 updateAll();
                 syncHash();
             });
@@ -1705,6 +1695,9 @@
             langBtn.title = lang === 'zh' ? 'Switch to English' : '切换到中文';
             screenshotBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-download"/></svg><span class="btn-text"> ${t('screenshot')}</span>`;
             shareBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use href="#icon-link"/></svg><span class="btn-text"> ${t('share')}</span>`;
+            // yuan 按钮动态货币符号
+            const yuanUnitBtn = document.getElementById('yuanUnitBtn');
+            if (yuanUnitBtn) yuanUnitBtn.textContent = lang === 'zh' ? '元' : (currency === 'usd' ? 'USD' : 'CNY');
             // header desc
             const headerDesc = document.querySelector('[data-i18n="headerDesc"]');
             if (headerDesc) headerDesc.innerHTML = t('headerDesc');
@@ -1811,13 +1804,7 @@
             lang = lang === 'zh' ? 'en' : 'zh';
             localStorage.setItem('lang', lang);
             // 切到中文：强制 CNY；切到英文：保持当前币种
-            if (lang === 'zh' && currency === 'usd' && budgetUnit === 'yuan') {
-                let currentVal = parseFloat(budgetSlider.value);
-                if (!isNaN(currentVal)) {
-                    currentVal = currentVal * exchangeRate;
-                    budgetSlider.value = currentVal.toFixed(2);
-                    budgetNumber.value = budgetSlider.value;
-                }
+            if (lang === 'zh' && currency === 'usd') {
                 currency = 'cny';
                 currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === 'cny'));
             }
