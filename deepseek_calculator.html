@@ -573,6 +573,61 @@
                 max-width: 200px;
             }
         }
+
+        /* 高峰/非高峰计价开关 */
+        .peak-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .peak-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            background: var(--slate-300);
+            border-radius: 100px;
+            transition: background 0.25s;
+            flex-shrink: 0;
+        }
+        .peak-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.25s, box-shadow 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .peak-switch.on {
+            background: var(--primary);
+        }
+        .peak-switch.on::after {
+            transform: translateX(20px);
+            box-shadow: 0 1px 4px rgba(99,102,241,0.35);
+        }
+        .peak-switch-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--slate-500);
+            user-select: none;
+        }
+
+        /* 高峰占比控制行 */
+        .peak-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            grid-column: 1 / -1;
+            margin-top: 2px;
+        }
+        @media (max-width: 768px) {
+            .peak-row { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -710,6 +765,31 @@
                         <button class="unit-opt active" data-disp="yi" data-i18n="yi"></button>
                     </div>
                     <div id="displayHint" class="hint-text" data-i18n="hintDisp"></div>
+                </div>
+                <div class="peak-toggle-group control-group" style="flex-shrink:0;">
+                    <label><span data-i18n="peakToggle"></span></label>
+                    <div class="unit-toggle" id="peakModeToggle">
+                        <button class="unit-opt active" data-peak="off" data-i18n="peakOff"></button>
+                        <button class="unit-opt" data-peak="on" data-i18n="peakOn"></button>
+                    </div>
+                    <div id="peakHint" class="hint-text" data-i18n="peakHint"></div>
+                </div>
+            </div>
+
+            <!-- 高峰/非高峰计价控制行 -->
+            <div class="peak-row" id="peakRow" style="display:none;">
+                <div class="control-group" style="flex:1;min-width:200px;">
+                    <label data-i18n-title="peakRatioTip"><span data-i18n="peakRatioLabel"></span></label>
+                    <input type="range" id="peakRatioSlider" min="0" max="100" step="1" value="50">
+                    <div class="slider-value">
+                        <span id="peakRatioValue" class="value-badge">50%</span>
+                        <span class="preset-tags">
+                            <button class="preset-tag" data-peak="100" data-i18n="peakPresetAllPeak"></button>
+                            <button class="preset-tag" data-peak="50" data-i18n="peakPresetBalanced"></button>
+                            <button class="preset-tag" data-peak="20" data-i18n="peakPresetMostlyOff"></button>
+                            <button class="preset-tag" data-peak="0" data-i18n="peakPresetAllOff"></button>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -896,6 +976,16 @@
                 currencyLabel: '币种',
                 cnyLabel: '¥ CNY',
                 usdLabel: '$ USD',
+                peakToggle: '高峰/非高峰计价',
+                peakRatioLabel: '高峰时段占比',
+                peakRatioTip: '预估每日调用中高峰时段(9:00-12:00,14:00-18:00 BJT)的工作占比。0%=全部非高峰，100%=全部高峰。加权均价=平时价×(1-占比)+高峰价×占比。高峰价=平时价×2。',
+                peakPresetAllPeak: '全高峰 100%',
+                peakPresetBalanced: '均衡 50%',
+                peakPresetMostlyOff: '主要非高峰 20%',
+                peakPresetAllOff: '全非高峰 0%',
+                peakOn: '已启用',
+                peakOff: '已关闭',
+                peakHint: '开启后按高峰/非高峰时段混合计价，高峰价格=平时价格×2',
             },
             en: {
                 title: 'DeepSeek Budget Analyzer',
@@ -1009,6 +1099,16 @@
                 currencyLabel: 'Currency',
                 cnyLabel: '¥ CNY',
                 usdLabel: '$ USD',
+                peakToggle: 'Peak/Off-Peak Pricing',
+                peakRatioLabel: 'Peak Hour Ratio',
+                peakRatioTip: 'Estimated proportion of daily calls during peak hours (9:00-12:00, 14:00-18:00 BJT). 0% = all off-peak, 100% = all peak. Weighted avg price = base × (1-ratio) + peak × ratio. Peak price = base × 2.',
+                peakPresetAllPeak: 'All Peak 100%',
+                peakPresetBalanced: 'Balanced 50%',
+                peakPresetMostlyOff: 'Mostly Off-Peak 20%',
+                peakPresetAllOff: 'All Off-Peak 0%',
+                peakOn: 'ON',
+                peakOff: 'OFF',
+                peakHint: 'Enable blended peak/off-peak pricing. Peak price = base × 2',
             }
         };
         let lang = 'zh';
@@ -1098,6 +1198,9 @@
         let displayUnit = 'yi';
         let allInputMode = false;
         let currency = 'cny';
+        let peakModeEnabled = false;
+        let peakRatio = 0.5;
+        const PEAK_MULTIPLIER = 2.0;
         let exchangeRate = 7.0;
 
         function getCurrencySymbol() {
@@ -1105,6 +1208,10 @@
         }
         function prices() {
             return PRICES[currency];
+        }
+
+        function blendedPrice(basePrice, pr) {
+            return basePrice * (1 - pr) + basePrice * PEAK_MULTIPLIER * pr;
         }
 
         // 异步获取实时汇率
@@ -1168,12 +1275,12 @@
             return { inputM, outputM, totalM: inputM + outputM, cost: budgetYuan };
         }
 
-        function computeMixed(proRatio, totalBudgetValue, r, hitRate, isTokenMode) {
+        function computeMixed(proRatio, totalBudgetValue, r, hitRate, isTokenMode, proPrice, flashPrice) {
             if (isTokenMode) {
                 const proTotalTokens = totalBudgetValue * proRatio;
                 const flashTotalTokens = totalBudgetValue * (1 - proRatio);
-                const proRes = computeFromTotalTokens(r, proTotalTokens, hitRate, prices().pro);
-                const flashRes = computeFromTotalTokens(r, flashTotalTokens, hitRate, prices().flash);
+                const proRes = computeFromTotalTokens(r, proTotalTokens, hitRate, proPrice || prices().pro);
+                const flashRes = computeFromTotalTokens(r, flashTotalTokens, hitRate, flashPrice || prices().flash);
                 return {
                     inputM: proRes.inputM + flashRes.inputM,
                     outputM: proRes.outputM + flashRes.outputM,
@@ -1187,8 +1294,8 @@
             } else {
                 const proBudget = totalBudgetValue * proRatio;
                 const flashBudget = totalBudgetValue * (1 - proRatio);
-                const proRes = computeFromBudget(proBudget, r, hitRate, prices().pro);
-                const flashRes = computeFromBudget(flashBudget, r, hitRate, prices().flash);
+                const proRes = computeFromBudget(proBudget, r, hitRate, proPrice || prices().pro);
+                const flashRes = computeFromBudget(flashBudget, r, hitRate, flashPrice || prices().flash);
                 return {
                     inputM: proRes.inputM + flashRes.inputM,
                     outputM: proRes.outputM + flashRes.outputM,
@@ -1233,6 +1340,20 @@
 
         function updateAll() {
             const sym = getCurrencySymbol();
+            const peakEnabled = peakModeEnabled;
+            const pr = peakEnabled ? peakRatio : 0;
+            const rawPro = prices().pro;
+            const rawFlash = prices().flash;
+            const proPrice = {
+                hit: blendedPrice(rawPro.hit, pr),
+                miss: blendedPrice(rawPro.miss, pr),
+                out: blendedPrice(rawPro.out, pr)
+            };
+            const flashPrice = {
+                hit: blendedPrice(rawFlash.hit, pr),
+                miss: blendedPrice(rawFlash.miss, pr),
+                out: blendedPrice(rawFlash.out, pr)
+            };
             let ratio = parseFloat(ratioSlider.value);
             let hitRate = parseFloat(hitrateSlider.value) / 100;
             let proRatio = parseFloat(mixSlider.value) / 100;
@@ -1280,8 +1401,8 @@
 
             if (allInputMode) {
                 // 全输入：所有预算/Token 都用于输入，输出为 0
-                const inputPricePro = prices().pro.hit * hitRate + prices().pro.miss * (1 - hitRate);
-                const inputPriceFlash = prices().flash.hit * hitRate + prices().flash.miss * (1 - hitRate);
+                const inputPricePro = proPrice.hit * hitRate + proPrice.miss * (1 - hitRate);
+                const inputPriceFlash = flashPrice.hit * hitRate + flashPrice.miss * (1 - hitRate);
                 if (budgetUnit === 'yuan') {
                     // 单独卡片：各用完整预算；混合卡片：按比例拆分
                     const proInputM = internalBudget / inputPricePro;
@@ -1319,19 +1440,18 @@
                 flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(3);
                 mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             } else if (budgetUnit === 'yuan') {
-                proRes = computeFromBudget(internalBudget, ratio, hitRate, prices().pro);
-                flashRes = computeFromBudget(internalBudget, ratio, hitRate, prices().flash);
-                mixedRes = computeMixed(proRatio, internalBudget, ratio, hitRate, false);
+                proRes = computeFromBudget(internalBudget, ratio, hitRate, proPrice);
+                flashRes = computeFromBudget(internalBudget, ratio, hitRate, flashPrice);
+                mixedRes = computeMixed(proRatio, internalBudget, ratio, hitRate, false, proPrice, flashPrice);
                 proCostSpan.innerText = sym + ' ' + internalBudget.toFixed(3);
                 flashCostSpan.innerText = sym + ' ' + internalBudget.toFixed(3);
                 mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             } else {
                 let totalTokenM = internalBudget;
                 // 单独卡片：各用完整 Token；混合卡片：按比例拆分
-                proRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, prices().pro);
-                flashRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, prices().flash);
-                mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true);
-                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(3);
+                proRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, proPrice);
+                flashRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, flashPrice);
+                mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true, proPrice, flashPrice);
                 flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(3);
                 mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             }
@@ -1347,14 +1467,13 @@
             mixTotalSpan.innerText = formatToken(mixedRes.totalM);
 
             // === Pro/Flash 单独卡片明细 ===
-            const proOutCost = proRes.outputM * prices().pro.out;
-            const proInCost = proRes.inputM * (prices().pro.hit*hitRate + prices().pro.miss*(1-hitRate));
-            proOutputCostEl.textContent = proRes.outputM > 0 ? sym + proOutCost.toFixed(3) : '';
+            const proOutCost = proRes.outputM * proPrice.out;
+            const proInCost = proRes.inputM * (proPrice.hit*hitRate + proPrice.miss*(1-hitRate));
             proOutputCostEl.style.display = proRes.outputM > 0 ? '' : 'none';
             proCostDetailEl.textContent = t('inputLabel') + ' ' + sym + proInCost.toFixed(3) + ' + ' + t('outputLabel') + ' ' + sym + proOutCost.toFixed(3);
 
-            const flashOutCost = flashRes.outputM * prices().flash.out;
-            const flashInCost = flashRes.inputM * (prices().flash.hit*hitRate + prices().flash.miss*(1-hitRate));
+            const flashOutCost = flashRes.outputM * flashPrice.out;
+            const flashInCost = flashRes.inputM * (flashPrice.hit*hitRate + flashPrice.miss*(1-hitRate));
             flashOutputCostEl.textContent = flashRes.outputM > 0 ? sym + flashOutCost.toFixed(3) : '';
             flashOutputCostEl.style.display = flashRes.outputM > 0 ? '' : 'none';
             flashCostDetailEl.textContent = t('inputLabel') + ' ' + sym + flashInCost.toFixed(3) + ' + ' + t('outputLabel') + ' ' + sym + flashOutCost.toFixed(3);
@@ -1366,8 +1485,8 @@
             mixInputDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${formatToken(mp.proInput||0)}</span><span><span class="dot flash"></span>${flashLabel} ${formatToken(mp.flashInput||0)}</span>`;
             mixInputDetailEl.style.display = (mp.proInput > 0 && mp.flashInput > 0) ? '' : 'none';
             // 输出明细
-            const proOCost = (mp.proOutput||0) * prices().pro.out;
-            const flashOCost = (mp.flashOutput||0) * prices().flash.out;
+            const proOCost = (mp.proOutput||0) * proPrice.out;
+            const flashOCost = (mp.flashOutput||0) * flashPrice.out;
             if ((mp.proOutput||0) > 0 || (mp.flashOutput||0) > 0) {
                 mixOutputDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${formatToken(mp.proOutput||0)} (${sym}${proOCost.toFixed(3)})</span><span><span class="dot flash"></span>${flashLabel} ${formatToken(mp.flashOutput||0)} (${sym}${flashOCost.toFixed(3)})</span>`;
             } else {
@@ -1382,24 +1501,54 @@
             mixCostDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${sym}${mpCost.toFixed(3)}</span><span><span class="dot flash"></span>${flashLabel} ${sym}${mfCost.toFixed(3)}</span>`;
             mixCostDetailEl.style.display = (mpCost > 0 && mfCost > 0) ? '' : 'none';
 
-            const inputPricePro = (prices().pro.hit*hitRate + prices().pro.miss*(1-hitRate));
-            const inputPriceFlash = (prices().flash.hit*hitRate + prices().flash.miss*(1-hitRate));
+            const inputPricePro = (proPrice.hit*hitRate + proPrice.miss*(1-hitRate));
+            const inputPriceFlash = (flashPrice.hit*hitRate + flashPrice.miss*(1-hitRate));
+
+            // === 高峰/非高峰对比数据 ===
+            let offPeakProCost, peakProCost, offPeakFlashCost, peakFlashCost, offPeakMixCost, peakMixCost;
+            let offPeakProTokens, peakProTokens, offPeakFlashTokens, peakFlashTokens, offPeakMixTokens, peakMixTokens;
+            if (peakEnabled) {
+                const basePro = prices().pro, baseFlash = prices().flash;
+                const pkPro = { hit: basePro.hit * PEAK_MULTIPLIER, miss: basePro.miss * PEAK_MULTIPLIER, out: basePro.out * PEAK_MULTIPLIER };
+                const pkFlash = { hit: baseFlash.hit * PEAK_MULTIPLIER, miss: baseFlash.miss * PEAK_MULTIPLIER, out: baseFlash.out * PEAK_MULTIPLIER };
+                if (budgetUnit === 'yuan') {
+                    const offPro = computeFromBudget(internalBudget, ratio, hitRate, basePro);
+                    const pkProRes = computeFromBudget(internalBudget, ratio, hitRate, pkPro);
+                    const offFlash = computeFromBudget(internalBudget, ratio, hitRate, baseFlash);
+                    const pkFlashRes = computeFromBudget(internalBudget, ratio, hitRate, pkFlash);
+                    const offMix = computeMixed(proRatio, internalBudget, ratio, hitRate, false, basePro, baseFlash);
+                    const pkMix = computeMixed(proRatio, internalBudget, ratio, hitRate, false, pkPro, pkFlash);
+                    offPeakProTokens = offPro.totalM; peakProTokens = pkProRes.totalM;
+                    offPeakFlashTokens = offFlash.totalM; peakFlashTokens = pkFlashRes.totalM;
+                    offPeakMixTokens = offMix.totalM; peakMixTokens = pkMix.totalM;
+                } else {
+                    const offPro = computeFromTotalTokens(ratio, internalBudget, hitRate, basePro);
+                    const pkProRes = computeFromTotalTokens(ratio, internalBudget, hitRate, pkPro);
+                    const offFlash = computeFromTotalTokens(ratio, internalBudget, hitRate, baseFlash);
+                    const pkFlashRes = computeFromTotalTokens(ratio, internalBudget, hitRate, pkFlash);
+                    const offMix = computeMixed(proRatio, internalBudget, ratio, hitRate, true, basePro, baseFlash);
+                    const pkMix = computeMixed(proRatio, internalBudget, ratio, hitRate, true, pkPro, pkFlash);
+                    offPeakProCost = offPro.cost; peakProCost = pkProRes.cost;
+                    offPeakFlashCost = offFlash.cost; peakFlashCost = pkFlashRes.cost;
+                    offPeakMixCost = offMix.cost; peakMixCost = pkMix.cost;
+                }
+            }
 
             const ratioLabel = allInputMode ? t('allInput') : (ratio === 0 ? t('allOutput') : t('ratioPrefix') + ' ' + ratio + ':1');
             if (budgetUnit === 'yuan') {
-                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3);
-                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3);
-                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(3) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(3) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput);
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakProTokens) + ' / 全高峰 ' + formatToken(peakProTokens) : '');
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakFlashTokens) + ' / 全高峰 ' + formatToken(peakFlashTokens) : '');
+                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(3) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(3) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakMixTokens) + ' / 全高峰 ' + formatToken(peakMixTokens) : '');
             } else {
                 let totalTokenForDisplay = internalBudget;
                 let displayDiv = getDisplayDivisor();
                 let displayUnitLabel = t('unitYi');
                 let displayTotal = (displayUnit === 'M') ? totalTokenForDisplay.toFixed(2) + 'M' : (totalTokenForDisplay/displayDiv).toFixed(2) + displayUnitLabel;
-                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().pro.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal;
-                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + prices().flash.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal;
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>全平时 ' + sym + offPeakProCost.toFixed(3) + ' / 全高峰 ' + sym + peakProCost.toFixed(3) : '');
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>全平时 ' + sym + offPeakFlashCost.toFixed(3) + ' / 全高峰 ' + sym + peakFlashCost.toFixed(3) : '');
                 let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
                 let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
-                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(3);
+                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(3) + (peakEnabled ? '<br>全平时 ' + sym + offPeakMixCost.toFixed(3) + ' / 全高峰 ' + sym + peakMixCost.toFixed(3) : '');
             }
 
             // === 缓存命中/未命中明细 ===
@@ -1410,12 +1559,12 @@
             const flashMissM = _flashInputM * (1 - hitRate);
             const mixHitM = _mixInputM * hitRate;
             const mixMissM = _mixInputM * (1 - hitRate);
-            const proHC = proHitM * prices().pro.hit;
-            const proMC = proMissM * prices().pro.miss;
-            const flashHC = flashHitM * prices().flash.hit;
-            const flashMC = flashMissM * prices().flash.miss;
-            const mixAvgHitPrice = proRatio * prices().pro.hit + (1-proRatio) * prices().flash.hit;
-            const mixAvgMissPrice = proRatio * prices().pro.miss + (1-proRatio) * prices().flash.miss;
+            const proHC = proHitM * proPrice.hit;
+            const proMC = proMissM * proPrice.miss;
+            const flashHC = flashHitM * flashPrice.hit;
+            const flashMC = flashMissM * flashPrice.miss;
+            const mixAvgHitPrice = proRatio * proPrice.hit + (1-proRatio) * flashPrice.hit;
+            const mixAvgMissPrice = proRatio * proPrice.miss + (1-proRatio) * flashPrice.miss;
             proCacheHit.innerText = `${formatToken(proHitM)} (${sym}${proHC.toFixed(3)})`;
             proCacheMiss.innerText = `${formatToken(proMissM)} (${sym}${proMC.toFixed(3)})`;
             flashCacheHit.innerText = `${formatToken(flashHitM)} (${sym}${flashHC.toFixed(3)})`;
@@ -1426,6 +1575,22 @@
             const unitLabel = displayUnit === 'M' ? 'M' : t('unitYi');
             const tokenDivisor = displayUnit === 'M' ? 1 : getDisplayDivisor();
             if (chart) chart.destroy();
+
+            // === 图表高峰/非高峰成本数据 ===
+            let offPeakCosts, peakCosts;
+            if (peakEnabled && budgetUnit === 'token') {
+                const basePro = prices().pro, baseFlash = prices().flash;
+                const pkPro = { hit: basePro.hit * PEAK_MULTIPLIER, miss: basePro.miss * PEAK_MULTIPLIER, out: basePro.out * PEAK_MULTIPLIER };
+                const pkFlash = { hit: baseFlash.hit * PEAK_MULTIPLIER, miss: baseFlash.miss * PEAK_MULTIPLIER, out: baseFlash.out * PEAK_MULTIPLIER };
+                const offPro = computeFromTotalTokens(ratio, internalBudget, hitRate, basePro);
+                const pkProRes = computeFromTotalTokens(ratio, internalBudget, hitRate, pkPro);
+                const offFlash = computeFromTotalTokens(ratio, internalBudget, hitRate, baseFlash);
+                const pkFlashRes = computeFromTotalTokens(ratio, internalBudget, hitRate, pkFlash);
+                const offMix = computeMixed(proRatio, internalBudget, ratio, hitRate, true, basePro, baseFlash);
+                const pkMix = computeMixed(proRatio, internalBudget, ratio, hitRate, true, pkPro, pkFlash);
+                offPeakCosts = [offPro.cost, offFlash.cost, offMix.cost];
+                peakCosts = [pkProRes.cost, pkFlashRes.cost, pkMix.cost];
+            }
             const ctx = document.getElementById('compareChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'bar',
@@ -1435,7 +1600,11 @@
                         { label: `${t('chartInput')} (${unitLabel})`, data: [proRes.inputM*hitRate/tokenDivisor, flashRes.inputM*hitRate/tokenDivisor, mixedRes.inputM*hitRate/tokenDivisor], backgroundColor: '#059669', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
                         { label: `${t('chartInputMiss')} (${unitLabel})`, data: [proRes.inputM*(1-hitRate)/tokenDivisor, flashRes.inputM*(1-hitRate)/tokenDivisor, mixedRes.inputM*(1-hitRate)/tokenDivisor], backgroundColor: '#6ee7b7', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
                         { label: `${t('chartOutput')} (${unitLabel})`, data: [proRes.outputM/tokenDivisor, flashRes.outputM/tokenDivisor, mixedRes.outputM/tokenDivisor], backgroundColor: '#f59e0b', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
-                        { label: `${t('chartCost')}`, type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' }
+                        { label: t('chartCost'), type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' },
+                        ...(peakEnabled && budgetUnit === 'token' ? [
+                            { label: t('chartCost') + ' (全平时)', type: 'line', data: offPeakCosts, backgroundColor: '#fbbf24', borderColor: '#fbbf24', borderWidth: 1, borderDash: [4,3], pointRadius: 0, fill: false, yAxisID: 'y1' },
+                            { label: t('chartCost') + ' (全高峰)', type: 'line', data: peakCosts, backgroundColor: '#dc2626', borderColor: '#dc2626', borderWidth: 1, borderDash: [2,2], pointRadius: 0, fill: false, yAxisID: 'y1' }
+                        ] : [])
                     ]
                 },
                 options: {
@@ -1489,16 +1658,28 @@
                 }
             });
             // 动态价格标签（根据币种实时更新）
-            const p = prices();
             const fmt = (v) => {
                 if (v < 0.01) return v.toFixed(4);
                 if (v < 1) return v.toFixed(3);
                 return v.toFixed(v % 1 === 0 ? 0 : 2);
             };
-            const proPriceTag = `${t('priceHit')} ${sym}${fmt(p.pro.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.pro.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.pro.out)}/M`;
-            const flashPriceTag = `${t('priceHit')} ${sym}${fmt(p.flash.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.flash.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.flash.out)}/M`;
-            document.querySelectorAll('#priceProTag').forEach(el => { el.textContent = proPriceTag; });
-            document.querySelectorAll('#priceFlashTag').forEach(el => { el.textContent = flashPriceTag; });
+            if (peakEnabled) {
+                const basePro = prices().pro, baseFlash = prices().flash;
+                const peakProHit = basePro.hit * PEAK_MULTIPLIER, peakProMiss = basePro.miss * PEAK_MULTIPLIER, peakProOut = basePro.out * PEAK_MULTIPLIER;
+                const peakFlashHit = baseFlash.hit * PEAK_MULTIPLIER, peakFlashMiss = baseFlash.miss * PEAK_MULTIPLIER, peakFlashOut = baseFlash.out * PEAK_MULTIPLIER;
+                const proPriceTag = `${t('priceHit')} ${sym}${fmt(basePro.hit)}(${t('peakOff')})/${sym}${fmt(peakProHit)}(${t('peakOn')}) · ${t('priceMiss')} ${sym}${fmt(basePro.miss)}(${t('peakOff')})/${sym}${fmt(peakProMiss)}(${t('peakOn')}) · ${t('priceOut')} ${sym}${fmt(basePro.out)}(${t('peakOff')})/${sym}${fmt(peakProOut)}(${t('peakOn')})`;
+                const flashPriceTag = `${t('priceHit')} ${sym}${fmt(baseFlash.hit)}(${t('peakOff')})/${sym}${fmt(peakFlashHit)}(${t('peakOn')}) · ${t('priceMiss')} ${sym}${fmt(baseFlash.miss)}(${t('peakOff')})/${sym}${fmt(peakFlashMiss)}(${t('peakOn')}) · ${t('priceOut')} ${sym}${fmt(baseFlash.out)}(${t('peakOff')})/${sym}${fmt(peakFlashOut)}(${t('peakOn')})`;
+                const wAvgPro = `${t('priceHit')} ${sym}${fmt(proPrice.hit)}/M · ${t('priceMiss')} ${sym}${fmt(proPrice.miss)}/M · ${t('priceOut')} ${sym}${fmt(proPrice.out)}/M`;
+                const wAvgFlash = `${t('priceHit')} ${sym}${fmt(flashPrice.hit)}/M · ${t('priceMiss')} ${sym}${fmt(flashPrice.miss)}/M · ${t('priceOut')} ${sym}${fmt(flashPrice.out)}/M`;
+                document.querySelectorAll('#priceProTag').forEach(el => { el.innerHTML = proPriceTag + '<br>' + wAvgPro; });
+                document.querySelectorAll('#priceFlashTag').forEach(el => { el.innerHTML = flashPriceTag + '<br>' + wAvgFlash; });
+            } else {
+                const p = prices();
+                const proPriceTag = `${t('priceHit')} ${sym}${fmt(p.pro.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.pro.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.pro.out)}/M`;
+                const flashPriceTag = `${t('priceHit')} ${sym}${fmt(p.flash.hit)}/M · ${t('priceMiss')} ${sym}${fmt(p.flash.miss)}/M · ${t('priceOut')} ${sym}${fmt(p.flash.out)}/M`;
+                document.querySelectorAll('#priceProTag').forEach(el => { el.textContent = proPriceTag; });
+                document.querySelectorAll('#priceFlashTag').forEach(el => { el.textContent = flashPriceTag; });
+            }
         }
         ratioSlider.addEventListener('input', () => { allInputMode = false; updateAll(); });
         document.querySelectorAll('.preset-tag').forEach(tag => {
@@ -1589,6 +1770,49 @@
                 syncHash();
             });
         });
+
+        // 高峰/非高峰计价开关
+        const peakModeButtons = document.querySelectorAll('#peakModeToggle .unit-opt');
+        const peakRow = document.getElementById('peakRow');
+
+
+        const peakRatioSlider = document.getElementById('peakRatioSlider');
+        const peakRatioValue = document.getElementById('peakRatioValue');
+
+        peakModeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newMode = btn.getAttribute('data-peak') === 'on';
+                if (newMode === peakModeEnabled) return;
+                peakModeEnabled = newMode;
+                peakModeButtons.forEach(b =>
+                    b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off'))
+                );
+                peakRow.style.display = peakModeEnabled ? '' : 'none';
+                updateAll();
+                syncHash();
+            });
+        });
+
+        // 高峰占比滑块
+        peakRatioSlider.addEventListener('input', () => {
+            peakRatio = parseInt(peakRatioSlider.value) / 100;
+            peakRatioValue.textContent = peakRatioSlider.value + '%';
+            updateAll();
+            syncHash();
+        });
+
+        // 高峰占比预设标签
+        document.querySelectorAll('#peakRow .preset-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                const val = parseInt(tag.getAttribute('data-peak'));
+                if (isNaN(val)) return;
+                peakRatioSlider.value = val;
+                peakRatio = val / 100;
+                peakRatioValue.textContent = val + '%';
+                updateAll();
+                syncHash();
+            });
+        });
         function saveState() {
             const state = {
                 r: ratioSlider.value,
@@ -1598,7 +1822,9 @@
                 u: budgetUnit,
                 d: displayUnit,
                 a: allInputMode,
-                c: currency
+                c: currency,
+                p: peakModeEnabled,
+                q: peakRatio
             };
             try { localStorage.setItem('calcState', JSON.stringify(state)); } catch(e) {}
         }
@@ -1625,6 +1851,16 @@
                     currency = s.c;
                     currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
                 }
+                if (s.p !== undefined) {
+                    peakModeEnabled = s.p;
+                    peakModeButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off')));
+                    peakRow.style.display = peakModeEnabled ? '' : 'none';
+                }
+                if (s.q !== undefined) {
+                    peakRatio = s.q;
+                    peakRatioSlider.value = Math.round(peakRatio * 100);
+                    peakRatioValue.textContent = Math.round(peakRatio * 100) + '%';
+                }
             } catch(e) {}
         }
 
@@ -1637,7 +1873,9 @@
                 c: currency,
                 r: ratioSlider.value,
                 h: hitrateSlider.value,
-                m: mixSlider.value
+                m: mixSlider.value,
+                pk: peakModeEnabled ? '1' : '0',
+                pq: Math.round(peakRatio * 100)
             });
             history.replaceState(null, '', '#' + params.toString());
         }
@@ -1666,6 +1904,19 @@
                 if (p.has('b')) {
                     budgetSlider.value = p.get('b');
                     budgetNumber.value = p.get('b');
+                }
+                if (p.has('pk')) {
+                    peakModeEnabled = p.get('pk') === '1';
+                    peakModeButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off')));
+                    peakRow.style.display = peakModeEnabled ? '' : 'none';
+                }
+                if (p.has('pq')) {
+                    const pqVal = parseInt(p.get('pq'));
+                    if (!isNaN(pqVal)) {
+                        peakRatio = pqVal / 100;
+                        peakRatioSlider.value = pqVal;
+                        peakRatioValue.textContent = pqVal + '%';
+                    }
                 }
             } catch(e) {}
         }
