@@ -300,6 +300,12 @@
             box-shadow: var(--shadow-sm);
             font-weight: 600;
         }
+        .unit-opt:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .unit-opt:disabled:hover { color: var(--slate-500); }
+        .unit-toggle.locked { opacity: 0.7; }
 
         .hint-text {
             font-size: 11px;
@@ -307,20 +313,23 @@
             color: var(--slate-400);
         }
 
-        /* 预算行：水平排列 */
+        /* 预算数值行：仅滑块，占整行 */
         .budget-row {
-            display: flex;
-            align-items: flex-end;
-            gap: 20px;
             grid-column: 1 / -1;
             margin-top: 2px;
         }
-        .budget-row .budget-slider-group { flex: 1; min-width: 0; }
-        .budget-row .budget-unit-group,
-        .budget-row .currency-unit-group,
-        .budget-row .display-unit-group {
-            flex-shrink: 0;
+        /* 切换选项行：等宽网格，排在最底部，自动换行 */
+        .options-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px 20px;
+            grid-column: 1 / -1;
+            margin-top: 4px;
         }
+        .options-row .control-group { min-width: 0; }
+        .options-row .hint-text { line-height: 1.4; }
+        /* 隐藏峰谷开关：新价下峰谷计价默认开启，逻辑由价格版本自动驱动 */
+        .peak-toggle-group { display: none !important; }
 
         /* 模型卡片网格 */
         .model-grid {
@@ -371,6 +380,53 @@
         .model-card:nth-child(2) .model-icon { background: rgba(16,185,129,0.1); }
         .model-card:nth-child(3) .model-icon { background: rgba(168,85,247,0.1); }
         .model-title { font-size: 14px; font-weight: 700; color: var(--slate-900); }
+        /* 卡片角色角标（如全用X / 实际方案 / 未使用） */
+        .card-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            margin-left: 6px;
+            vertical-align: middle;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+        .card-badge.baseline { background: var(--slate-100, #f1f5f9); color: var(--slate-500); }
+        .card-badge.actual   { background: var(--primary-soft); color: var(--primary); }
+        .card-badge.unused   { background: var(--slate-100, #f1f5f9); color: var(--slate-400); }
+        /* 卡片未使用（占比 0）：灰阶降权 */
+        .model-card.unused { opacity: 0.5; filter: grayscale(0.7); }
+        .model-card.unused::before { opacity: 0.4; }
+        /* 混合卡片构成条（水桶风） */
+        .mix-bar {
+            height: 14px;
+            border-radius: 7px;
+            overflow: hidden;
+            display: flex;
+            margin: 8px 0 6px;
+            border: 1px solid var(--stat-border);
+            background: var(--stat-bg);
+            position: relative;
+        }
+        .mix-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        .mix-bar-fill.pro   { background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%); }
+        .mix-bar-fill.flash { background: linear-gradient(180deg, #34d399 0%, #10b981 100%); }
+        .mix-bar-legend {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--slate-500);
+            margin-bottom: 8px;
+        }
+        .mix-bar-legend .seg { display: inline-flex; align-items: center; gap: 4px; }
+        .mix-bar-legend .swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+        .mix-bar-legend .swatch.pro   { background: #3b82f6; }
+        .mix-bar-legend .swatch.flash { background: #10b981; }
         .price-tag {
             font-size: 10px;
             color: var(--slate-400);
@@ -378,6 +434,7 @@
             line-height: 1.5;
             padding-left: 34px;
         }
+        .model-subtitle { font-size: 10px; color: var(--slate-400); margin-bottom: 8px; padding-left: 34px; }
         .stat {
             background: var(--stat-bg);
             border-radius: var(--radius-sm);
@@ -502,10 +559,7 @@
         @media (max-width: 768px) {
             body { padding: 12px 8px; }
             .control-grid { grid-template-columns: 1fr; gap: 10px; }
-            .budget-row { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
-            .budget-row .budget-slider-group { flex: 0 0 100%; }
-            .budget-row .budget-unit-group,
-            .budget-row .display-unit-group { flex: 1; }
+            .options-row { gap: 12px 10px; }
             .value-badge { font-size: 11px; white-space: nowrap; }
             .preset-tag { font-size: 9px; padding: 1px 6px; }
             .stat-number { font-size: 14px; }
@@ -726,7 +780,7 @@
                     </span>
                 </div>
             </div>
-            <!-- 预算数值 + 预算单位 + Token显示单位 同一行 -->
+            <!-- 预算数值行：仅滑块，整行 -->
             <div class="budget-row">
                 <div class="budget-slider-group control-group">
                     <label data-i18n-title="budgetTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="budgetLabel"></span></label>
@@ -742,6 +796,27 @@
                         </span>
                     </div>
                 </div>
+            </div>
+
+            <!-- 高峰/非高峰计价控制行 -->
+            <div class="peak-row" id="peakRow" style="display:none;">
+                <div class="control-group" style="flex:1;min-width:200px;">
+                    <label data-i18n-title="peakRatioTip"><span data-i18n="peakRatioLabel"></span></label>
+                    <input type="range" id="peakRatioSlider" min="0" max="100" step="1" value="100">
+                    <div class="slider-value">
+                        <span id="peakRatioValue" class="value-badge">100%</span>
+                        <span class="preset-tags">
+                            <button class="preset-tag" data-peak="100" data-i18n="peakPresetAllPeak"></button>
+                            <button class="preset-tag" data-peak="50" data-i18n="peakPresetBalanced"></button>
+                            <button class="preset-tag" data-peak="20" data-i18n="peakPresetMostlyOff"></button>
+                            <button class="preset-tag" data-peak="0" data-i18n="peakPresetAllOff"></button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 切换选项行：等宽网格，排在最底部，自动换行 -->
+            <div class="options-row">
                 <div class="budget-unit-group control-group">
                     <label data-i18n-title="budgetUnitTip"><svg class="svg-icon" aria-hidden="true"><use href="#icon-ruler"/></svg> <span data-i18n="budgetUnitLabel"></span></label>
                     <div class="unit-toggle" id="budgetUnitToggle">
@@ -766,7 +841,15 @@
                     </div>
                     <div id="displayHint" class="hint-text" data-i18n="hintDisp"></div>
                 </div>
-                <div class="peak-toggle-group control-group" style="flex-shrink:0;">
+                <div class="price-version-group control-group">
+                    <label><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="priceVersionLabel"></span></label>
+                    <div class="unit-toggle" id="priceVersionToggle">
+                        <button class="unit-opt" data-version="legacy" data-i18n="versionLegacy"></button>
+                        <button class="unit-opt" data-version="v2" data-i18n="versionV2"></button>
+                    </div>
+                    <div id="priceVersionHint" class="hint-text"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span id="priceVersionHintText"></span></div>
+                </div>
+                <div class="peak-toggle-group control-group">
                     <label><span data-i18n="peakToggle"></span></label>
                     <div class="unit-toggle" id="peakModeToggle">
                         <button class="unit-opt active" data-peak="off" data-i18n="peakOff"></button>
@@ -775,34 +858,18 @@
                     <div id="peakHint" class="hint-text" data-i18n="peakHint"></div>
                 </div>
             </div>
-
-            <!-- 高峰/非高峰计价控制行 -->
-            <div class="peak-row" id="peakRow" style="display:none;">
-                <div class="control-group" style="flex:1;min-width:200px;">
-                    <label data-i18n-title="peakRatioTip"><span data-i18n="peakRatioLabel"></span></label>
-                    <input type="range" id="peakRatioSlider" min="0" max="100" step="1" value="50">
-                    <div class="slider-value">
-                        <span id="peakRatioValue" class="value-badge">50%</span>
-                        <span class="preset-tags">
-                            <button class="preset-tag" data-peak="100" data-i18n="peakPresetAllPeak"></button>
-                            <button class="preset-tag" data-peak="50" data-i18n="peakPresetBalanced"></button>
-                            <button class="preset-tag" data-peak="20" data-i18n="peakPresetMostlyOff"></button>
-                            <button class="preset-tag" data-peak="0" data-i18n="peakPresetAllOff"></button>
-                        </span>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-title" data-i18n="result" style="margin-bottom:12px;"></div>
     <div class="model-grid">
-        <div class="model-card">
+        <div class="model-card" id="proCard">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#3b82f6"><use href="#icon-circle"/></svg></span>
-                <span class="model-title" data-i18n="modelPro"></span>
+                <span class="model-title" data-i18n="modelPro"></span><span class="card-badge" id="proBadge"></span>
             </div>
+            <div class="model-subtitle" id="proSubtitle"></div>
             <div class="price-tag" id="priceProTag"></div>
             <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="proInput" class="stat-number">-</div><div class="cache-detail" id="proCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="proCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="proCacheMiss">-</span></span></div></div>
             <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="proOutput" class="stat-number">-</div><div class="cache-detail" id="proOutputCost">-</div></div>
@@ -810,11 +877,12 @@
             <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="proCost" class="stat-number cost">-</div><div class="cache-detail" id="proCostDetail">-</div></div>
             <div id="proNote" class="note"></div>
         </div>
-        <div class="model-card">
+        <div class="model-card" id="flashCard">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#10b981"><use href="#icon-zap"/></svg></span>
-                <span class="model-title" data-i18n="modelFlash"></span>
+                <span class="model-title" data-i18n="modelFlash"></span><span class="card-badge" id="flashBadge"></span>
             </div>
+            <div class="model-subtitle" id="flashSubtitle"></div>
             <div class="price-tag" id="priceFlashTag"></div>
             <div class="stat"><div class="stat-label" data-i18n="statInput"></div><div id="flashInput" class="stat-number">-</div><div class="cache-detail" id="flashCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="flashCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="flashCacheMiss">-</span></span></div></div>
             <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="flashOutput" class="stat-number">-</div><div class="cache-detail" id="flashOutputCost">-</div></div>
@@ -822,12 +890,15 @@
             <div class="stat"><div class="stat-label"><svg class="svg-icon" aria-hidden="true"><use href="#icon-money"/></svg> <span data-i18n="statCost"></span></div><div id="flashCost" class="stat-number cost">-</div><div class="cache-detail" id="flashCostDetail">-</div></div>
             <div id="flashNote" class="note"></div>
         </div>
-        <div class="model-card">
+        <div class="model-card" id="mixCard">
             <div class="model-header">
                 <span class="model-icon"><svg class="svg-icon" aria-hidden="true" style="color:#a855f7"><use href="#icon-shuffle"/></svg></span>
-                <span class="model-title" data-i18n="modelMix"></span>
+                <span class="model-title" data-i18n="modelMix"></span><span class="card-badge" id="mixBadge"></span>
             </div>
+            <div class="model-subtitle" id="mixSubtitle"></div>
             <div class="price-tag" data-i18n="priceMix"></div>
+            <div class="mix-bar-legend"><span class="seg"><span class="swatch pro"></span><span id="mixBarLegendPro"></span></span><span class="seg"><span class="swatch flash"></span><span id="mixBarLegendFlash"></span></span></div>
+            <div class="mix-bar"><div class="mix-bar-fill pro" id="mixBarPro" style="width:0%"></div><div class="mix-bar-fill flash" id="mixBarFlash" style="width:0%"></div></div>
             <div class="stat"><div class="stat-label" data-i18n="statTotalInput"></div><div id="mixInput" class="stat-number">-</div><div class="cache-detail" id="mixCacheDetail"><span><span class="dot hit"></span><span data-i18n="cacheHit"></span>: <span id="mixCacheHit">-</span></span><span><span class="dot miss"></span><span data-i18n="cacheMiss"></span>: <span id="mixCacheMiss">-</span></span></div><div class="cache-detail" id="mixInputDetail">-</div></div>
             <div class="stat"><div class="stat-label" data-i18n="statOutput"></div><div id="mixOutput" class="stat-number">-</div><div class="cache-detail" id="mixOutputDetail">-</div></div>
             <div class="stat"><div class="stat-label" data-i18n="statTotal"></div><div id="mixTotal" class="stat-number">-</div><div class="cache-detail" id="mixTotalDetail">-</div></div>
@@ -851,16 +922,25 @@
 
 <script>
     (function(){
+        // 价格版本：legacy = 旧价（2026-08-17 前生效）；v2 = 官方新峰谷定价（2026-08-17 起生效）
+        // v2 以「空闲时段价」作为基准，高峰价 = 空闲 × 2（与 PEAK_MULTIPLIER 一致，符合官方「空闲=高峰一半」）
+        // USD 由 CNY / 实时汇率动态换算，避免维护两套硬编码且汇率不统一的问题
         const PRICES = {
-            cny: {
-                pro: { hit: 0.025, miss: 3.0, out: 6.0 },
-                flash: { hit: 0.02, miss: 1.0, out: 2.0 }
+            legacy: {
+                cny: {
+                    pro:   { hit: 0.025, miss: 3.0, out: 6.0 },
+                    flash: { hit: 0.02,  miss: 1.0, out: 2.0 }
+                }
             },
-            usd: {
-                pro: { hit: 0.003625, miss: 0.435, out: 0.87 },
-                flash: { hit: 0.0028, miss: 0.14, out: 0.28 }
+            v2: {
+                cny: {
+                    pro:   { hit: 0.15, miss: 4.5, out: 13.5 },
+                    flash: { hit: 0.05, miss: 1.5, out: 4.5  }
+                }
             }
         };
+        const PRICE_V2_START = new Date('2026-08-17T00:00:00+08:00'); // 新价格生效（北京时间）
+        const DEFAULT_PRICE_VERSION = (new Date() >= PRICE_V2_START) ? 'v2' : 'legacy';
 
         // i18n
         const LANG = {
@@ -871,13 +951,13 @@
                 calcTitle: '结果说明',
                 ratioLabel: '输入:输出 比例',
                 hitrateLabel: '缓存命中率',
-                mixLabel: 'Pro 模型占比',
+                mixLabel: 'Pro 模型调用占比',
                 budgetLabel: '预算数值',
                 budgetUnitLabel: '预算单位',
                 dispUnitLabel: 'Token单位',
                 ratioTip: '输入 Token 与输出 Token 的比例。数值越大，每个输出 Token 所需的输入 Token 越多。编程场景通常需要大量上下文输入（高比例），问答场景输出更多（低比例）。',
                 hitrateTip: '缓存命中的比例。命中时使用低价，未命中按标准价计费。DeepSeek 自动复用上下文实现缓存。',
-                mixTip: 'Pro 模型在混合中的占比。0% 全 Flash，100% 全 Pro。混合模型按比例拆分预算分别计算。',
+                mixTip: 'Pro 模型调用在混合中的占比（按调用比例拆分，非费用占比）。0% 全 Flash，100% 全 Pro。混合模型按调用比例拆分预算分别计算。',
                 budgetTip: '预算金额（元）或总 Token 数，取决于「预算单位」的选择。调整可看到不同预算下的 Token 用量和费用。',
                 budgetUnitTip: '预算单位：元（输入金额自动计算 Token 用量）或 Token 数（输入 Token 数自动计算费用）。',
                 dispUnitTip: '所有 Token 数值的显示单位：百万（M）或亿（1亿=100M）。',
@@ -911,6 +991,14 @@
                 priceMiss: '未命中',
                 priceOut: '输出',
                 priceMix: '按预算比例拆分',
+                // 卡片角色角标与副标题
+                cardBaselinePro: '如全用 Pro',
+                cardBaselineFlash: '如全用 Flash',
+                cardActualMix: '实际方案',
+                cardUnused: '未使用',
+                cardCurrent: '当前方案',
+                legendPro: 'Pro',
+                legendFlash: 'Flash',
                 statInput: '输入 Tokens',
                 statOutput: '输出 Tokens',
                 statTotal: '总 Tokens',
@@ -986,13 +1074,27 @@
                 peakOn: '已启用',
                 peakOff: '已关闭',
                 peakHint: '开启后按高峰/非高峰时段混合计价，高峰价格=平时价格×2',
+                peakHintLegacy: '旧价为单一计价，无峰谷',
+                peakHintV2: '高峰价 = 空闲价×2，按占比加权',
+                peakLockedHint: '当前版本不支持峰谷计价',
+                priceVersionLabel: '价格版本',
+                versionLegacy: '旧价',
+                versionV2: '新价',
+                priceOffPeak: '空闲',
+                priceOnPeak: '高峰',
+                allOffPeak: '全空闲',
+                allOnPeak: '全高峰',
+                pvHintLegacy: '当前：旧价（官方 2026-08-17 前生效）',
+                pvHintLegacyOver: '⚠️ 新价已于 2026-08-17 生效，建议切到「新价」',
+                pvHintV2Preview: '预览：新峰谷定价（官方 2026-08-17 起生效）',
+                pvHintV2Current: '当前：新峰谷定价（已生效）',
             },
             en: {
                 title: 'DeepSeek Budget Analyzer',
                 paramSetting: 'Parameters',
                 ratioLabel: 'Input:Output Ratio',
                 hitrateLabel: 'Cache Hit Rate',
-                mixLabel: 'Pro Model Ratio',
+                mixLabel: 'Pro Call Ratio',
                 budgetLabel: 'Budget',
                 budgetUnitLabel: 'Budget Unit',
                 dispUnitLabel: 'Token Unit',
@@ -1026,6 +1128,13 @@
                 priceMiss: 'Miss',
                 priceOut: 'Out',
                 priceMix: 'Split by budget ratio',
+                cardBaselinePro: 'If 100% Pro',
+                cardBaselineFlash: 'If 100% Flash',
+                cardActualMix: 'Actual Plan',
+                cardUnused: 'Unused',
+                cardCurrent: 'Current Plan',
+                legendPro: 'Pro',
+                legendFlash: 'Flash',
                 statInput: 'Input Tokens',
                 statOutput: 'Output Tokens',
                 statTotal: 'Total Tokens',
@@ -1086,7 +1195,7 @@
                 calcTitle: 'Details',
                 ratioTip: 'Ratio of input tokens to output tokens. Higher values mean more input context per output token. Coding scenarios need high ratios, Q&A needs low ratios.',
                 hitrateTip: 'Cache hit rate. Hits use low prices, misses use standard pricing. DeepSeek auto-reuses context for caching.',
-                mixTip: 'Pro model ratio in hybrid. 0% = all Flash, 100% = all Pro. Budget is split by ratio for separate calculation.',
+                mixTip: 'Pro model call ratio in hybrid (split by call volume, not cost). 0% = all Flash, 100% = all Pro. Budget is split by call ratio for separate calculation.',
                 budgetTip: 'Budget amount (CNY) or total tokens, depending on "Budget Unit". Adjust to see token usage and costs.',
                 budgetUnitTip: 'Budget unit: CNY (enter amount, compute tokens) or Tokens (enter tokens, compute cost).',
                 dispUnitTip: 'Display unit for all token values: Million (M) or Billion (B)',
@@ -1109,6 +1218,20 @@
                 peakOn: 'ON',
                 peakOff: 'OFF',
                 peakHint: 'Enable blended peak/off-peak pricing. Peak price = base × 2',
+                peakHintLegacy: 'Old price is flat — no peak/off-peak',
+                peakHintV2: 'Peak = off-peak×2; blends by ratio',
+                peakLockedHint: 'Peak pricing not available for this version',
+                priceVersionLabel: 'Price Version',
+                versionLegacy: 'Old',
+                versionV2: 'New',
+                priceOffPeak: 'Off-Peak',
+                priceOnPeak: 'Peak',
+                allOffPeak: 'All Off-Peak',
+                allOnPeak: 'All Peak',
+                pvHintLegacy: 'Old: flat pricing (official until 2026-08-17)',
+                pvHintLegacyOver: '⚠️ New pricing effective since 2026-08-17 — switch to "New"',
+                pvHintV2Preview: 'Preview: new peak/off-peak pricing (official from 2026-08-17)',
+                pvHintV2Current: 'Current: new peak/off-peak pricing (effective)',
             }
         };
         let lang = 'zh';
@@ -1140,6 +1263,20 @@
         const proNote = document.getElementById('proNote');
         const flashNote = document.getElementById('flashNote');
         const mixNote = document.getElementById('mixNote');
+        // 卡片状态/构成条元素
+        const proCard = document.getElementById('proCard');
+        const flashCard = document.getElementById('flashCard');
+        const mixCard = document.getElementById('mixCard');
+        const proBadge = document.getElementById('proBadge');
+        const flashBadge = document.getElementById('flashBadge');
+        const mixBadge = document.getElementById('mixBadge');
+        const proSubtitle = document.getElementById('proSubtitle');
+        const flashSubtitle = document.getElementById('flashSubtitle');
+        const mixSubtitle = document.getElementById('mixSubtitle');
+        const mixBarPro = document.getElementById('mixBarPro');
+        const mixBarFlash = document.getElementById('mixBarFlash');
+        const mixBarLegendPro = document.getElementById('mixBarLegendPro');
+        const mixBarLegendFlash = document.getElementById('mixBarLegendFlash');
         const proCacheHit = document.getElementById('proCacheHit');
         const proCacheMiss = document.getElementById('proCacheMiss');
         const flashCacheHit = document.getElementById('flashCacheHit');
@@ -1199,15 +1336,20 @@
         let allInputMode = false;
         let currency = 'cny';
         let peakModeEnabled = false;
-        let peakRatio = 0.5;
+        let peakRatio = 1.0;
         const PEAK_MULTIPLIER = 2.0;
         let exchangeRate = 7.0;
+        let priceVersion = DEFAULT_PRICE_VERSION;
 
         function getCurrencySymbol() {
             return currency === 'usd' ? '$' : '\u00A5';
         }
         function prices() {
-            return PRICES[currency];
+            const cnySet = (PRICES[priceVersion] || PRICES.legacy).cny;
+            if (currency === 'cny') return cnySet;
+            const r = exchangeRate || 7.0;
+            const conv = (o) => ({ hit: o.hit / r, miss: o.miss / r, out: o.out / r });
+            return { pro: conv(cnySet.pro), flash: conv(cnySet.flash) };
         }
 
         function blendedPrice(basePrice, pr) {
@@ -1220,8 +1362,10 @@
                 const resp = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
                 if (resp.ok) {
                     const data = await resp.json();
-                    if (data.rates && data.rates.USD) {
+                    if (data.rates && data.rates.USD && data.rates.USD > 0) {
                         exchangeRate = data.rates.USD;
+                        // 汇率更新后刷新（USD 价格为动态换算，否则显示仍为旧汇率）
+                        if (typeof updateAll === 'function') updateAll();
                     }
                 }
             } catch (_) { /* fallback to 7.0 */ }
@@ -1340,6 +1484,7 @@
 
         function updateAll() {
             const sym = getCurrencySymbol();
+            const offPkTxt = t('allOffPeak'), onPkTxt = t('allOnPeak');
             const peakEnabled = peakModeEnabled;
             const pr = peakEnabled ? peakRatio : 0;
             const rawPro = prices().pro;
@@ -1452,6 +1597,7 @@
                 proRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, proPrice);
                 flashRes = computeFromTotalTokens(ratio, totalTokenM, hitRate, flashPrice);
                 mixedRes = computeMixed(proRatio, totalTokenM, ratio, hitRate, true, proPrice, flashPrice);
+                proCostSpan.innerText = sym + ' ' + proRes.cost.toFixed(3);
                 flashCostSpan.innerText = sym + ' ' + flashRes.cost.toFixed(3);
                 mixCostSpan.innerText = sym + ' ' + mixedRes.cost.toFixed(3);
             }
@@ -1501,6 +1647,27 @@
             mixCostDetailEl.innerHTML = `<span><span class="dot pro"></span>${proLabel} ${sym}${mpCost.toFixed(3)}</span><span><span class="dot flash"></span>${flashLabel} ${sym}${mfCost.toFixed(3)}</span>`;
             mixCostDetailEl.style.display = (mpCost > 0 && mfCost > 0) ? '' : 'none';
 
+            // === 卡片角色状态：Pro/Flash 按 Pro调用占比 灰阶降权；混合卡常显实际方案 + 构成条 ===
+            const proPct = Math.round(proRatio * 100);
+            const flashPct = 100 - proPct;
+            // Pro 卡：占比 0 → 未使用；其余 → 对比基准
+            const proUnused = proRatio <= 0;
+            proCard.classList.toggle('unused', proUnused);
+            proBadge.className = 'card-badge ' + (proUnused ? 'unused' : 'baseline');
+            proBadge.textContent = proUnused ? t('cardUnused') : t('cardBaselinePro');
+            // Flash 卡：占比 100(即 Flash 0) → 未使用；其余 → 对比基准
+            const flashUnused = proRatio >= 1;
+            flashCard.classList.toggle('unused', flashUnused);
+            flashBadge.className = 'card-badge ' + (flashUnused ? 'unused' : 'baseline');
+            flashBadge.textContent = flashUnused ? t('cardUnused') : t('cardBaselineFlash');
+            // 混合卡：始终实际方案；构成条按占比填充
+            mixBadge.className = 'card-badge actual';
+            mixBadge.textContent = t('cardActualMix');
+            mixBarPro.style.width = proPct + '%';
+            mixBarFlash.style.width = flashPct + '%';
+            mixBarLegendPro.textContent = t('legendPro') + ' ' + proPct + '%';
+            mixBarLegendFlash.textContent = t('legendFlash') + ' ' + flashPct + '%';
+
             const inputPricePro = (proPrice.hit*hitRate + proPrice.miss*(1-hitRate));
             const inputPriceFlash = (flashPrice.hit*hitRate + flashPrice.miss*(1-hitRate));
 
@@ -1536,19 +1703,19 @@
 
             const ratioLabel = allInputMode ? t('allInput') : (ratio === 0 ? t('allOutput') : t('ratioPrefix') + ' ' + ratio + ':1');
             if (budgetUnit === 'yuan') {
-                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakProTokens) + ' / 全高峰 ' + formatToken(peakProTokens) : '');
-                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakFlashTokens) + ' / 全高峰 ' + formatToken(peakFlashTokens) : '');
-                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(3) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(3) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput) + (peakEnabled ? '<br>全平时 ' + formatToken(offPeakMixTokens) + ' / 全高峰 ' + formatToken(peakMixTokens) : '');
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>' + offPkTxt + ' ' + formatToken(offPeakProTokens) + ' / ' + onPkTxt + ' ' + formatToken(peakProTokens) : '');
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('budget') + ' ' + sym + internalBudget.toFixed(3) + (peakEnabled ? '<br>' + offPkTxt + ' ' + formatToken(offPeakFlashTokens) + ' / ' + onPkTxt + ' ' + formatToken(peakFlashTokens) : '');
+                mixNote.innerHTML = t('proBudget') + ' ' + sym + mixedRes.proBudgetYuan?.toFixed(3) + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashBudget') + ' ' + sym + mixedRes.flashBudgetYuan?.toFixed(3) + '<br>' + t('proContribution') + ' ' + formatToken(mixedRes.proInput) + ' / ' + t('flashContribution') + ' ' + formatToken(mixedRes.flashInput) + (peakEnabled ? '<br>' + offPkTxt + ' ' + formatToken(offPeakMixTokens) + ' / ' + onPkTxt + ' ' + formatToken(peakMixTokens) : '');
             } else {
                 let totalTokenForDisplay = internalBudget;
                 let displayDiv = getDisplayDivisor();
                 let displayUnitLabel = t('unitYi');
                 let displayTotal = (displayUnit === 'M') ? totalTokenForDisplay.toFixed(2) + 'M' : (totalTokenForDisplay/displayDiv).toFixed(2) + displayUnitLabel;
-                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>全平时 ' + sym + offPeakProCost.toFixed(3) + ' / 全高峰 ' + sym + peakProCost.toFixed(3) : '');
-                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>全平时 ' + sym + offPeakFlashCost.toFixed(3) + ' / 全高峰 ' + sym + peakFlashCost.toFixed(3) : '');
+                proNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPricePro.toFixed(4) + '/M | ' + t('output') + ' ' + sym + proPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>' + offPkTxt + ' ' + sym + offPeakProCost.toFixed(3) + ' / ' + onPkTxt + ' ' + sym + peakProCost.toFixed(3) : '');
+                flashNote.innerHTML = t('mixInputPrice') + ' ' + sym + inputPriceFlash.toFixed(4) + '/M | ' + t('output') + ' ' + sym + flashPrice.out + '/M<br>' + ratioLabel + ' · ' + t('totalToken') + ' ' + displayTotal + (peakEnabled ? '<br>' + offPkTxt + ' ' + sym + offPeakFlashCost.toFixed(3) + ' / ' + onPkTxt + ' ' + sym + peakFlashCost.toFixed(3) : '');
                 let proTokenDisplay = (displayUnit === 'M') ? mixedRes.proBudgetToken?.toFixed(2)+'M' : (mixedRes.proBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
                 let flashTokenDisplay = (displayUnit === 'M') ? mixedRes.flashBudgetToken?.toFixed(2)+'M' : (mixedRes.flashBudgetToken/displayDiv).toFixed(2)+displayUnitLabel;
-                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(3) + (peakEnabled ? '<br>全平时 ' + sym + offPeakMixCost.toFixed(3) + ' / 全高峰 ' + sym + peakMixCost.toFixed(3) : '');
+                mixNote.innerHTML = t('proTokenAlloc') + ' ' + proTokenDisplay + ' (' + (proRatio*100).toFixed(0) + '%) + ' + t('flashAlloc') + ' ' + flashTokenDisplay + '<br>' + t('totalCost') + ' ' + sym + mixedRes.cost.toFixed(3) + (peakEnabled ? '<br>' + offPkTxt + ' ' + sym + offPeakMixCost.toFixed(3) + ' / ' + onPkTxt + ' ' + sym + peakMixCost.toFixed(3) : '');
             }
 
             // === 缓存命中/未命中明细 ===
@@ -1602,8 +1769,8 @@
                         { label: `${t('chartOutput')} (${unitLabel})`, data: [proRes.outputM/tokenDivisor, flashRes.outputM/tokenDivisor, mixedRes.outputM/tokenDivisor], backgroundColor: '#f59e0b', borderRadius: 4, yAxisID: 'y', stack: 'stack0' },
                         { label: t('chartCost'), type: 'line', data: [proRes.cost, flashRes.cost, mixedRes.cost], backgroundColor: '#ef4444', borderColor: '#ef4444', borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'y1' },
                         ...(peakEnabled && budgetUnit === 'token' ? [
-                            { label: t('chartCost') + ' (全平时)', type: 'line', data: offPeakCosts, backgroundColor: '#fbbf24', borderColor: '#fbbf24', borderWidth: 1, borderDash: [4,3], pointRadius: 0, fill: false, yAxisID: 'y1' },
-                            { label: t('chartCost') + ' (全高峰)', type: 'line', data: peakCosts, backgroundColor: '#dc2626', borderColor: '#dc2626', borderWidth: 1, borderDash: [2,2], pointRadius: 0, fill: false, yAxisID: 'y1' }
+                            { label: t('chartCost') + ' (' + offPkTxt + ')', type: 'line', data: offPeakCosts, backgroundColor: '#fbbf24', borderColor: '#fbbf24', borderWidth: 1, borderDash: [4,3], pointRadius: 0, fill: false, yAxisID: 'y1' },
+                            { label: t('chartCost') + ' (' + onPkTxt + ')', type: 'line', data: peakCosts, backgroundColor: '#dc2626', borderColor: '#dc2626', borderWidth: 1, borderDash: [2,2], pointRadius: 0, fill: false, yAxisID: 'y1' }
                         ] : [])
                     ]
                 },
@@ -1667,8 +1834,8 @@
                 const basePro = prices().pro, baseFlash = prices().flash;
                 const peakProHit = basePro.hit * PEAK_MULTIPLIER, peakProMiss = basePro.miss * PEAK_MULTIPLIER, peakProOut = basePro.out * PEAK_MULTIPLIER;
                 const peakFlashHit = baseFlash.hit * PEAK_MULTIPLIER, peakFlashMiss = baseFlash.miss * PEAK_MULTIPLIER, peakFlashOut = baseFlash.out * PEAK_MULTIPLIER;
-                const proPriceTag = `${t('priceHit')} ${sym}${fmt(basePro.hit)}(${t('peakOff')})/${sym}${fmt(peakProHit)}(${t('peakOn')}) · ${t('priceMiss')} ${sym}${fmt(basePro.miss)}(${t('peakOff')})/${sym}${fmt(peakProMiss)}(${t('peakOn')}) · ${t('priceOut')} ${sym}${fmt(basePro.out)}(${t('peakOff')})/${sym}${fmt(peakProOut)}(${t('peakOn')})`;
-                const flashPriceTag = `${t('priceHit')} ${sym}${fmt(baseFlash.hit)}(${t('peakOff')})/${sym}${fmt(peakFlashHit)}(${t('peakOn')}) · ${t('priceMiss')} ${sym}${fmt(baseFlash.miss)}(${t('peakOff')})/${sym}${fmt(peakFlashMiss)}(${t('peakOn')}) · ${t('priceOut')} ${sym}${fmt(baseFlash.out)}(${t('peakOff')})/${sym}${fmt(peakFlashOut)}(${t('peakOn')})`;
+                const proPriceTag = `${t('priceHit')} ${sym}${fmt(basePro.hit)}(${t('priceOffPeak')})/${sym}${fmt(peakProHit)}(${t('priceOnPeak')}) · ${t('priceMiss')} ${sym}${fmt(basePro.miss)}(${t('priceOffPeak')})/${sym}${fmt(peakProMiss)}(${t('priceOnPeak')}) · ${t('priceOut')} ${sym}${fmt(basePro.out)}(${t('priceOffPeak')})/${sym}${fmt(peakProOut)}(${t('priceOnPeak')})`;
+                const flashPriceTag = `${t('priceHit')} ${sym}${fmt(baseFlash.hit)}(${t('priceOffPeak')})/${sym}${fmt(peakFlashHit)}(${t('priceOnPeak')}) · ${t('priceMiss')} ${sym}${fmt(baseFlash.miss)}(${t('priceOffPeak')})/${sym}${fmt(peakFlashMiss)}(${t('priceOnPeak')}) · ${t('priceOut')} ${sym}${fmt(baseFlash.out)}(${t('priceOffPeak')})/${sym}${fmt(peakFlashOut)}(${t('priceOnPeak')})`;
                 const wAvgPro = `${t('priceHit')} ${sym}${fmt(proPrice.hit)}/M · ${t('priceMiss')} ${sym}${fmt(proPrice.miss)}/M · ${t('priceOut')} ${sym}${fmt(proPrice.out)}/M`;
                 const wAvgFlash = `${t('priceHit')} ${sym}${fmt(flashPrice.hit)}/M · ${t('priceMiss')} ${sym}${fmt(flashPrice.miss)}/M · ${t('priceOut')} ${sym}${fmt(flashPrice.out)}/M`;
                 document.querySelectorAll('#priceProTag').forEach(el => { el.innerHTML = proPriceTag + '<br>' + wAvgPro; });
@@ -1771,6 +1938,32 @@
             });
         });
 
+        // 价格版本切换（旧价 / 新价）
+        const priceVersionButtons = document.querySelectorAll('#priceVersionToggle .unit-opt');
+        function syncPriceVersionUI() {
+            priceVersionButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-version') === priceVersion));
+        }
+        // 峰谷计价由价格版本自动驱动（开关已隐藏）：新价默认开启+显示占比行；旧价关闭+隐藏占比行
+        // peakModeEnabled 变量与开关逻辑保留，以便官方未来变化时恢复 UI
+        function applyPeakAvailability() {
+            const isV2 = priceVersion === 'v2';
+            peakModeEnabled = isV2;
+            peakRow.style.display = isV2 ? '' : 'none';
+            peakModeButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off')));
+        }
+        priceVersionButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newVersion = btn.getAttribute('data-version');
+                if (newVersion === priceVersion) return;
+                priceVersion = newVersion;
+                syncPriceVersionUI();
+                applyPeakAvailability();
+                applyLang();   // 重渲染版本相关文案（peakHint 等）并调用 updateAll
+                syncHash();
+            });
+        });
+        syncPriceVersionUI(); // 初始 active 状态
+
         // 高峰/非高峰计价开关
         const peakModeButtons = document.querySelectorAll('#peakModeToggle .unit-opt');
         const peakRow = document.getElementById('peakRow');
@@ -1781,6 +1974,7 @@
 
         peakModeButtons.forEach(btn => {
             btn.addEventListener('click', () => {
+                if (priceVersion === 'legacy') return; // 旧价不支持峰谷
                 const newMode = btn.getAttribute('data-peak') === 'on';
                 if (newMode === peakModeEnabled) return;
                 peakModeEnabled = newMode;
@@ -1823,6 +2017,7 @@
                 d: displayUnit,
                 a: allInputMode,
                 c: currency,
+                v: priceVersion,
                 p: peakModeEnabled,
                 q: peakRatio
             };
@@ -1852,15 +2047,15 @@
                     currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
                 }
                 if (s.p !== undefined) {
-                    peakModeEnabled = s.p;
-                    peakModeButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off')));
-                    peakRow.style.display = peakModeEnabled ? '' : 'none';
+                    // peakModeEnabled 现由价格版本驱动，此处仅恢复占比峰值 q
                 }
                 if (s.q !== undefined) {
                     peakRatio = s.q;
                     peakRatioSlider.value = Math.round(peakRatio * 100);
                     peakRatioValue.textContent = Math.round(peakRatio * 100) + '%';
                 }
+                if (s.v === 'v2' || s.v === 'legacy') priceVersion = s.v;
+                syncPriceVersionUI();
             } catch(e) {}
         }
 
@@ -1871,6 +2066,7 @@
                 u: budgetUnit,
                 d: displayUnit,
                 c: currency,
+                pv: priceVersion,
                 r: ratioSlider.value,
                 h: hitrateSlider.value,
                 m: mixSlider.value,
@@ -1897,6 +2093,11 @@
                     currency = p.get('c');
                     currencyButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-currency') === currency));
                 }
+                if (p.has('pv')) {
+                    const pv = p.get('pv');
+                    if (pv === 'v2' || pv === 'legacy') priceVersion = pv;
+                    syncPriceVersionUI();
+                }
                 if (p.has('r')) ratioSlider.value = p.get('r');
                 if (p.has('h')) hitrateSlider.value = p.get('h');
                 if (p.has('m')) mixSlider.value = p.get('m');
@@ -1906,9 +2107,7 @@
                     budgetNumber.value = p.get('b');
                 }
                 if (p.has('pk')) {
-                    peakModeEnabled = p.get('pk') === '1';
-                    peakModeButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-peak') === (peakModeEnabled ? 'on' : 'off')));
-                    peakRow.style.display = peakModeEnabled ? '' : 'none';
+                    // peakModeEnabled 现由价格版本驱动，忽略存储值
                 }
                 if (p.has('pq')) {
                     const pqVal = parseInt(p.get('pq'));
@@ -1942,6 +2141,7 @@
 
         loadState();
         loadFromHash();
+        applyPeakAvailability(); // 初始化：旧价锁定峰谷为关闭
 
         // 从 localStorage 恢复语言偏好
         const storedLang = localStorage.getItem('lang');
@@ -2008,6 +2208,18 @@
             document.querySelectorAll('[data-i18n-footer]').forEach(el => {
                 el.innerHTML = t('footer');
             });
+            // 价格版本提示：根据当前版本 + 新价是否已生效
+            const pvHintEl = document.getElementById('priceVersionHintText');
+            if (pvHintEl) {
+                const v2Active = new Date() >= PRICE_V2_START;
+                const hintKey = priceVersion === 'v2'
+                    ? (v2Active ? 'pvHintV2Current' : 'pvHintV2Preview')
+                    : (v2Active ? 'pvHintLegacyOver' : 'pvHintLegacy');
+                pvHintEl.textContent = t(hintKey);
+            }
+            // 峰谷提示：根据版本
+            const peakHintEl = document.getElementById('peakHint');
+            if (peakHintEl) peakHintEl.textContent = t(priceVersion === 'v2' ? 'peakHintV2' : 'peakHintLegacy');
             // updateAll 会重新渲染动态内容
             updateAll();
         }

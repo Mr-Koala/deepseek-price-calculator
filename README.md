@@ -19,21 +19,35 @@
 
 ## 模型定价
 
-### 人民币定价 (CNY)
+> 数据源：[DeepSeek 官方价格页](https://api-docs.deepseek.com/zh-cn/quick_start/pricing)。DeepSeek 于 **2026-08-17 00:00（北京时间）** 起调整为峰谷定价。本工具内置两套价格，可随时切换。
+
+### 现价（2026-08-17 前）
+
+单位：元 / 百万 tokens，单一计价（无峰谷）。
 
 | 模型 | 缓存命中 | 未命中 | 输出 |
 |------|---------|--------|------|
 | DeepSeek-V4-Pro | ¥0.025/M | ¥3/M | ¥6/M |
 | DeepSeek-V4-Flash | ¥0.02/M | ¥1/M | ¥2/M |
 
+### 新价（2026-08-17 起，峰谷定价）
+
+高峰时段为北京时间 9:00–12:00、14:00–18:00（其余为空闲），**高峰价 = 空闲价 × 2**。
+
+| 模型 | 时段 | 缓存命中 | 未命中 | 输出 |
+|------|------|---------|--------|------|
+| DeepSeek-V4-Pro | 空闲 | ¥0.15/M | ¥4.5/M | ¥13.5/M |
+| DeepSeek-V4-Pro | 高峰 | ¥0.30/M | ¥9/M | ¥27/M |
+| DeepSeek-V4-Flash | 空闲 | ¥0.05/M | ¥1.5/M | ¥4.5/M |
+| DeepSeek-V4-Flash | 高峰 | ¥0.10/M | ¥3/M | ¥9/M |
+
+> 相比现价，输出 token 在新价空闲时段涨 2.25×、高峰涨 4.5×；缓存命中单价涨幅更大（Flash 2.5×/5×、Pro 6×/12×）。
+
 ### 美元定价 (USD)
 
-| 模型 | 缓存命中 | 未命中 | 输出 |
-|------|---------|--------|------|
-| DeepSeek-V4-Pro | $0.003625/M | $0.435/M | $0.87/M |
-| DeepSeek-V4-Flash | $0.0028/M | $0.14/M | $0.28/M |
+USD 由 CNY 按实时汇率动态换算（页面加载时从 exchangerate-api.com 获取，兜底汇率 7.0），无需手动维护。
 
-> 汇率兜底 7.0，页面加载时会尝试获取实时汇率（exchangerate-api.com）。
+> 版本切换与峰谷占比均会编码进 URL hash，可一键分享。
 
 ## 使用方式
 
@@ -67,6 +81,8 @@ A pure frontend single-page tool for estimating DeepSeek V4 API costs and token 
 - **Dual model support**: DeepSeek-V4-Pro and DeepSeek-V4-Flash
 - **Cache hit rate**: Accounts for mixed input pricing based on cache hit/miss ratio
 - **Hybrid mode**: Split budget proportionally between Pro and Flash
+- **Price version switch**: Toggle between **Current pricing** (in effect before 2026-08-17) and **New peak/off-peak pricing** (effective from 2026-08-17). The default is chosen automatically by current date.
+- **Peak/off-peak pricing**: New pricing uses peak hours (9:00–12:00, 14:00–18:00 BJT, price = off-peak × 2); adjust the peak-hour ratio slider for a weighted estimate
 - **Linked units**: Budget unit (CNY / token count) and display unit (M / B) sync automatically
 - **Language toggle**: Switch between ZH and EN
 - **Currency toggle**: Switch between CNY and USD in EN mode — prices, results, and charts update instantly
@@ -76,19 +92,31 @@ A pure frontend single-page tool for estimating DeepSeek V4 API costs and token 
 
 ### Pricing
 
+> Source: [DeepSeek official pricing page](https://api-docs.deepseek.com/quick_start/pricing). DeepSeek switches to **peak/off-peak pricing** from **2026-08-17 00:00 (BJT)**. This tool ships both price sets, switchable at any time.
+
+#### Current pricing (before 2026-08-17) — flat, no peak/off-peak
+
 | Model | Cache Hit | Cache Miss | Output |
 |-------|-----------|------------|--------|
 | DeepSeek-V4-Pro | ¥0.025/M | ¥3/M | ¥6/M |
 | DeepSeek-V4-Flash | ¥0.02/M | ¥1/M | ¥2/M |
 
-#### USD Pricing
+#### New pricing (from 2026-08-17, peak/off-peak)
 
-| Model | Cache Hit | Cache Miss | Output |
-|-------|-----------|------------|--------|
-| DeepSeek-V4-Pro | $0.003625/M | $0.435/M | $0.87/M |
-| DeepSeek-V4-Flash | $0.0028/M | $0.14/M | $0.28/M |
+Peak hours are 9:00–12:00, 14:00–18:00 BJT (rest is off-peak); **peak price = off-peak × 2**.
 
-> Fallback exchange rate: 7.0. On page load, a live rate is fetched from exchangerate-api.com.
+| Model | Period | Cache Hit | Cache Miss | Output |
+|-------|--------|-----------|------------|--------|
+| DeepSeek-V4-Pro | Off-peak | ¥0.15/M | ¥4.5/M | ¥13.5/M |
+| DeepSeek-V4-Pro | Peak | ¥0.30/M | ¥9/M | ¥27/M |
+| DeepSeek-V4-Flash | Off-peak | ¥0.05/M | ¥1.5/M | ¥4.5/M |
+| DeepSeek-V4-Flash | Peak | ¥0.10/M | ¥3/M | ¥9/M |
+
+#### USD pricing
+
+USD is derived dynamically from CNY using a live exchange rate (fetched from exchangerate-api.com on load, fallback 7.0), so no manual maintenance is needed.
+
+> Both price-version and peak-ratio are encoded in the URL hash for one-click sharing.
 
 ### Usage
 
